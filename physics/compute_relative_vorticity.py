@@ -19,7 +19,7 @@ directory = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/'
 mask_path = ['~/Python/AI4PEX/DINO/mesh_mask_exp16.nc']
 
 # Initial date string
-start_date_init_str = "00610201"
+start_date_init_str = "00610101"
 
 # End date string
 end_date_init_str = "00730101"
@@ -65,12 +65,17 @@ while current_date_init < end_date_init:
                                   domcfg_files=mask_path)
 
     # set up xgcm grid
+    # grid = xgcm.Grid(
+    #             ds,
+    #             metrics=get_metrics(ds),
+    #             periodic={'X': True, 'Y': False},
+    #             boundary={'Y': 'extend'},
+    #             )
+
     grid = xgcm.Grid(
                 ds,
                 metrics=get_metrics(ds),
-                periodic={'X': True, 'Y': False},
-                boundary={'Y': 'extend'},
-                )
+    )
 
     # subset data for surface
     ds_ss = ds.isel(z_c=0, z_f=0)
@@ -80,9 +85,11 @@ while current_date_init < end_date_init:
 
     # compute relative vorticity
     zeta = 1/(ds_ss.e1f*ds_ss.e2f) * \
-           ( grid.diff(ds_ss.vg*ds_ss.e2v, 'X') \
-           - grid.diff(ds_ss.ug*ds_ss.e1u, 'Y') ) * ds_ss.fmask
-    
+           ( grid.diff(ds_ss.vg*ds_ss.e2v, 'X', 
+                       boundary='fill', fill_value=0) \
+           - grid.diff(ds_ss.ug*ds_ss.e1u, 'Y', 
+                       boundary='fill', fill_value=0) ) * ds_ss.fmask
+
     # zero over equator region
     zeta = xr.where(((ds_ss.gphif>2) | (ds_ss.gphif<-2)), zeta, 0.0)
 
