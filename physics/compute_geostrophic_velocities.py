@@ -67,12 +67,17 @@ while current_date_init < end_date_init:
                                   domcfg_files=mask_path)
 
     # set up xgcm grid
+    # grid = xgcm.Grid(
+    #             ds,
+    #             metrics=get_metrics(ds),
+    #             periodic={'X': True, 'Y': False},
+    #             boundary={'Y': 'extend'},
+    #             )
+
     grid = xgcm.Grid(
                 ds,
                 metrics=get_metrics(ds),
-                periodic={'X': True, 'Y': False},
-                boundary={'Y': 'extend'},
-                )
+    )
 
     # subset data for surface
     ds_ss = ds.isel(z_c=0, z_f=0)
@@ -81,21 +86,21 @@ while current_date_init < end_date_init:
     del ds
 
     # interpolate ssh to u and v points
-    zos_u = grid.interp(ds_ss.zos, 'X') * ds_ss.umask
-    zos_v = grid.interp(ds_ss.zos, 'Y') * ds_ss.vmask
+    zos_u = grid.interp(ds_ss.zos, 'X', boundary='fill', fill_value=0) * ds_ss.umask
+    zos_v = grid.interp(ds_ss.zos, 'Y', boundary='fill', fill_value=0) * ds_ss.vmask
 
     # set coriolis parameter to 1e-12 at equator
     ff = xr.where(((ds_ss.gphit>0.1) | (ds_ss.gphit<-0.1)), ds_ss.ff_t, 1e-12)
 
     # compute geostrophic velocities on t points
     ug = - (9.81/(ff)) * \
-            ( grid.diff(zos_v, 'Y') / ds_ss.e2t ) * ds_ss.tmask
+            ( grid.diff(zos_v, 'Y', boundary='fill', fill_value=0) / ds_ss.e2t ) * ds_ss.tmask
     vg = (9.81/(ff)) * \
-            ( grid.diff(zos_u, 'X') / ds_ss.e1t ) * ds_ss.tmask
+            ( grid.diff(zos_u, 'X', boundary='fill', fill_value=0) / ds_ss.e1t ) * ds_ss.tmask
 
     # put velocities back on u and v points
-    vg_v = grid.interp(vg, 'Y') * ds_ss.vmask
-    ug_u = grid.interp(ug, 'X') * ds_ss.umask
+    vg_v = grid.interp(vg, 'Y', boundary='fill', fill_value=0) * ds_ss.vmask
+    ug_u = grid.interp(ug, 'X', boundary='fill', fill_value=0) * ds_ss.umask
 
     # create datasets for each velocity
     ds_u = xr.Dataset(
