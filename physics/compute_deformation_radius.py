@@ -30,10 +30,10 @@ logger.info('Mask dataset is: %s', mask)
 # print(mask.e3t_0)
 
 # Initial date string
-start_date_init_str = "00610201"
+start_date_init_str = "00710701"
 
 # End date string
-end_date_init_str = "00690301"
+end_date_init_str = "00730101"
 # end_date_init_str = "00730101"
 
 

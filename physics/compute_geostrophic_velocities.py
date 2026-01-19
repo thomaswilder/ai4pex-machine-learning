@@ -26,8 +26,8 @@ mask_path = ['~/Python/AI4PEX/DINO/mesh_mask_exp16.nc']
 start_date_init_str = "00610101"
 
 # End date string
-# end_date_init_str = "00610301"
-end_date_init_str = "00721201"
+# end_date_init_str = "00610201"
+end_date_init_str = "00730101"
 
 # Convert date strings to datetime objects
 start_date_init = datetime.strptime(start_date_init_str, "%Y%m%d")
@@ -104,14 +104,18 @@ while current_date_init < end_date_init:
 
     # create datasets for each velocity
     ds_u = xr.Dataset(
-        data_vars=dict(
-            ug = ug,
-        ),
-        coords=dict(
-            t = ds_ss.t,
-            gphiu = ds_ss.gphiu,
-            glamu = ds_ss.glamu,
-        ),
+        data_vars={
+            'ug': (["y_c", "x_f", "t"], 
+                        ug_u.values),
+        },
+        coords={
+            "t": (["t"], ug_u.t.values,
+                        ug_u.t.attrs),
+            "gphiu": (["y_c", "x_f"], ds_ss.gphiu.values, 
+                      {"standard_name": "Latitude", "units": "degrees_north"}),
+            "glamu": (["y_c", "x_f"], ds_ss.glamu.values, 
+                      {"standard_name": "Longitude","units": "degrees_east"}),
+        },
         attrs={
             "name": "NEMO dataset",
             "description": "Geostrophic ocean current in i direction \
@@ -120,14 +124,18 @@ while current_date_init < end_date_init:
     )
 
     ds_v = xr.Dataset(
-        data_vars=dict(
-            vg = vg,
-        ),
-        coords=dict(
-            time_counter = ds_ss.t,
-            gphiv = ds_ss.gphiv,
-            glamv = ds_ss.glamv,
-        ),
+        data_vars={
+            'vg': (["y_f", "x_c", "t"], 
+                        vg_v.values),
+        },
+        coords={
+            "t": (["t"], vg_v.t.values,
+                        vg_v.t.attrs),
+            "gphiv": (["y_f", "x_c"], ds_ss.gphiv.values, 
+                      {"standard_name": "Latitude", "units": "degrees_north"}),
+            "glamv": (["y_f", "x_c"], ds_ss.glamv.values, 
+                      {"standard_name": "Longitude","units": "degrees_east"}),
+        },
         attrs={
             "name": "NEMO dataset",
             "description": "Geostrophic ocean current in j direction \

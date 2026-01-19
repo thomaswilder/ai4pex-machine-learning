@@ -28,10 +28,10 @@ directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/{region
 mask_path = [directory + f'mesh_mask_exp16_{region}.nc']
 
 # Initial date string
-start_date_init_str = "00610101"
+start_date_init_str = "00610201"
 
 # End date string
-end_date_init_str = "00610201"
+end_date_init_str = "00690101"
 
 
 # Convert date strings to datetime objects
