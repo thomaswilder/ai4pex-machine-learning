@@ -118,8 +118,8 @@ while current_date_init < end_date_init:
     #! just for testing
     # subset ds for first 2 time steps
     # ds = ds.isel(t=slice(0,2))
-    dataU = dataU.isel(t=slice(0,2))
-    dataV = dataV.isel(t=slice(0,2))
+    # dataU = dataU.isel(t=slice(0,2))
+    # dataV = dataV.isel(t=slice(0,2))
     
     # Rechunk the dataset
     domcfg = domcfg.chunk(dict(y_c=-1))
