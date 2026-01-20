@@ -45,10 +45,10 @@ imax = region_params['imax']
 #------------------------------------------#
 
 # Initial date string
-start_date_init_str = "00610101"
+start_date_init_str = "00710701"
 
 # End date string
-end_date_init_str = "00610201"
+end_date_init_str = "00730101"
 
 
 # Convert date strings to datetime objects
@@ -84,6 +84,7 @@ while current_date_init < end_date_init:
     ds = xr.open_dataset(nemo_paths[0][0])
 
     # mask and subset data 
+    #* n.b. here we use < rather than <=
     if grid == 'U':
         ds_masked = ds.where( (ds.gphiu.isel(x_f=imin-1,y_c=jmin-1).values < ds.gphiu) &
                 (ds.gphiu < ds.gphiu.isel(x_f=imax,y_c=jmax).values) &
