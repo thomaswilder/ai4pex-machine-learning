@@ -31,9 +31,9 @@ mask025_path = directory + 'mesh_mask_exp4_SO_JET.nc'
 
 region = 'SO_JET'
 
-variable = 'ke'
+variable = 'vg'
 variable_to_filter = 'fine_ke'
-variable_name = 'eke'
+variable_name = 'vg'
 
 #TODO add xnemo option to load in deformation radius
 
@@ -51,10 +51,10 @@ max_grid_scale = grid_scale.max()
 # -------------------------------------------- #
 
 # Initial date string
-start_date_init_str = "00610201"
+start_date_init_str = "00610101"
 
 # End date string
-end_date_init_str = "00730101"
+end_date_init_str = "00610201"
 
 
 # Convert date strings to datetime objects
@@ -99,6 +99,7 @@ while current_date_init < end_date_init:
         data = data.rename({'time_counter': 't', 
                             'x': 'x_c',
                             'y': 'y_c'})
+    
 
     # merge data and domcfg
     ds = xr.merge([data, domcfg])
@@ -169,30 +170,81 @@ while current_date_init < end_date_init:
                 ds['fine_ke'],                                            
                 dims=['y_c', 'x_c'])
         # variable = 'mke'
+    elif variable == 'ug':
+        ds['ug_c'] = grid.interp(ds.ug, ['X'], **bd)
+        ds['ug_f'] = filter_irregular_with_land.apply(ds['ug_c'], 
+                                                           dims=['y_c', 'x_c'])
+        ds['ug_fc'] = grid.interp(ds.ug_f, ['X'], **bd)
+    elif variable == 'vg':
+        ds['vg_c'] = grid.interp(ds.vg, ['Y'], **bd)
+        ds['vg_f'] = filter_irregular_with_land.apply(ds['vg_c'], 
+                                                           dims=['y_c', 'x_c'])
+        ds['vg_fc'] = grid.interp(ds.vg_f, ['Y'], **bd)
     else:
         ds[f'{variable}_f'] = filter_irregular_with_land.apply(ds[variable], 
                                                            dims=['y_c', 'x_c'])
         
     # create dataset
-    ds_tmp = xr.Dataset(
-        data_vars={
-            f'{variable_name}': (["t", "y_c", "x_c"], 
-                        ds[f'{variable_name}_f'].values),
-        },
-        coords={
-            "t": (["t"], ds[f'{variable_name}_f'].t.values,
-                        ds[f'{variable_name}_f'].t.attrs),
-            "gphit": (["y_c", "x_c"], ds[f'{variable_name}_f'].gphit.values, 
-                      {"standard_name": "Latitude", "units": "degrees_north"}),
-            "glamt": (["y_c", "x_c"], ds[f'{variable_name}_f'].glamt.values, 
-                      {"standard_name": "Longitude","units": "degrees_east"}),
-        },
-        attrs={
-            "name": "NEMO dataset",
-            "description": f"Filtered {variable_name} at cell centre \
-                              -> ocean T grid variables",
-        },
+    if variable =='ug':
+        ds_tmp = xr.Dataset(
+            data_vars={
+                f'{variable_name}': (["t", "y_c", "x_f"], 
+                            ds[f'{variable_name}_fc'].values),
+            },
+            coords={
+                "t": (["t"], ds[f'{variable_name}_fc'].t.values,
+                            ds[f'{variable_name}_fc'].t.attrs),
+                "gphiu": (["y_c", "x_f"], ds[f'{variable_name}_fc'].gphiu.values, 
+                        {"standard_name": "Latitude", "units": "degrees_north"}),
+                "glamu": (["y_c", "x_f"], ds[f'{variable_name}_fc'].glamu.values, 
+                        {"standard_name": "Longitude","units": "degrees_east"}),
+            },
+            attrs={
+                "name": "NEMO dataset",
+                "description": f"Filtered {variable_name} \
+                                -> ocean U grid variables",
+            },
     )
+    elif variable =='vg':
+        ds_tmp = xr.Dataset(
+            data_vars={
+                f'{variable_name}': (["t", "y_f", "x_c"], 
+                            ds[f'{variable_name}_fc'].values),
+            },
+            coords={
+                "t": (["t"], ds[f'{variable_name}_fc'].t.values,
+                            ds[f'{variable_name}_fc'].t.attrs),
+                "gphiv": (["y_f", "x_c"], ds[f'{variable_name}_fc'].gphiv.values, 
+                        {"standard_name": "Latitude", "units": "degrees_north"}),
+                "glamv": (["y_f", "x_c"], ds[f'{variable_name}_fc'].glamv.values, 
+                        {"standard_name": "Longitude","units": "degrees_east"}),
+            },
+            attrs={
+                "name": "NEMO dataset",
+                "description": f"Filtered {variable_name} \
+                                -> ocean V grid variables",
+            },
+    )
+    else:
+        ds_tmp = xr.Dataset(
+            data_vars={
+                f'{variable_name}': (["t", "y_c", "x_c"], 
+                            ds[f'{variable_name}_f'].values),
+            },
+            coords={
+                "t": (["t"], ds[f'{variable_name}_f'].t.values,
+                            ds[f'{variable_name}_f'].t.attrs),
+                "gphit": (["y_c", "x_c"], ds[f'{variable_name}_f'].gphit.values, 
+                        {"standard_name": "Latitude", "units": "degrees_north"}),
+                "glamt": (["y_c", "x_c"], ds[f'{variable_name}_f'].glamt.values, 
+                        {"standard_name": "Longitude","units": "degrees_east"}),
+            },
+            attrs={
+                "name": "NEMO dataset",
+                "description": f"Filtered {variable_name} at cell centre \
+                                -> ocean T grid variables",
+            },
+        )
 
     # extract date_end from nemo_paths
     filename = nemo_paths[0][0].split('/')[-1]
