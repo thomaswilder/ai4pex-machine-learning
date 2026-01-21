@@ -19,7 +19,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 #------------ Parameters to set ------------#
-variable = 'Ld'
+variable = 'bn2'
 
 grid = 'T'
 
@@ -45,7 +45,7 @@ imax = region_params['imax']
 #------------------------------------------#
 
 # Initial date string
-start_date_init_str = "00710701"
+start_date_init_str = "00610201"
 
 # End date string
 end_date_init_str = "00730101"
@@ -102,11 +102,19 @@ while current_date_init < end_date_init:
 
         ds_subset = ds_masked.dropna(dim='y_f', how='all').dropna(dim='x_c', how='all')
     #* note indice change as Ld was computed and set with xnemo readable
-    elif grid == 'T':
+    elif grid == 'T' and variable == 'Ld':
         ds_masked = ds.where( (ds.gphit.isel(x=imin-1,y=jmin-1).values < ds.gphit) &
                 (ds.gphit < ds.gphit.isel(x=imax,y=jmax).values) &
                 (ds.glamt.isel(x=imin-1,y=jmin-1).values < ds.glamt) &
                 (ds.glamt < ds.glamt.isel(x=imax,y=jmax).values)
+                )
+
+        ds_subset = ds_masked.dropna(dim='y', how='all').dropna(dim='x', how='all')
+    elif grid == 'T' and variable == 'bn2':
+        ds_masked = ds.where( (ds.nav_lat.isel(x=imin-1,y=jmin-1).values < ds.nav_lat) &
+                (ds.nav_lat < ds.nav_lat.isel(x=imax,y=jmax).values) &
+                (ds.nav_lon.isel(x=imin-1,y=jmin-1).values < ds.nav_lon) &
+                (ds.nav_lon < ds.nav_lon.isel(x=imax,y=jmax).values)
                 )
 
         ds_subset = ds_masked.dropna(dim='y', how='all').dropna(dim='x', how='all')
