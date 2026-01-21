@@ -4,6 +4,8 @@
     Description: Calculates relative vorticity
     
     Method: Uses geostrophic velocity
+
+    #TODO Check why vorticity ends up with incorrect pandas index
 '''
 
 import glob
@@ -24,14 +26,14 @@ logger.info('Begin...')
 region = 'SO_JET'
 
 
-directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/{region}/'
-mask_path = [directory + f'mesh_mask_exp16_{region}.nc']
+directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/{region}/coarsened_data/'
+mask_path = [directory + f'../mesh_mask_exp4_{region}.nc']
 
 # Initial date string
-start_date_init_str = "00610201"
+start_date_init_str = "00610101"
 
 # End date string
-end_date_init_str = "00690101"
+end_date_init_str = "00610201"
 
 
 # Convert date strings to datetime objects
@@ -62,8 +64,8 @@ while current_date_init < end_date_init:
     current_date_init = next_date_init
 
     # set nemo filename using dates
-    nemo_files = [f'MINT_1d_{date_init}_*_ug_{region}.nc',
-                  f'MINT_1d_{date_init}_*_vg_{region}.nc']
+    nemo_files = [f'MINT_1d_{date_init}_*_ug_c_{region}.nc',
+                  f'MINT_1d_{date_init}_*_vg_c_{region}.nc']
     print(nemo_files)
 
     nemo_paths = [glob.glob(directory + f) for f in nemo_files]
@@ -146,15 +148,16 @@ while current_date_init < end_date_init:
     date_end = filename.split('_')[3]
     date_end
 
-    # extract time counter bounds from original file
-    ref = xr.open_dataset(directory +
-                          f'MINT_1d_{date_init}_{date_end}_ug_{region}.nc')
+    #! don't need below since won't open using xnemogcm
+    # # extract time counter bounds from original file
+    # ref = xr.open_dataset(directory +
+    #                       f'../MINT_1d_{date_init}_{date_end}_ug_{region}.nc')
 
-    ds_tmp["time_counter_bounds"] = ref["time_counter_bounds"]
+    # ds_tmp["time_counter_bounds"] = ref["time_counter_bounds"]
     # ds_tmp["time_counter_bounds"] = ref["time_counter_bounds"]
 
     # save data to netcdf
-    output_file = f'MINT_1d_{date_init}_{date_end}_vor_{region}.nc'
+    output_file = f'MINT_1d_{date_init}_{date_end}_vor_cg_{region}.nc'
 
     save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/{region}/'
 
