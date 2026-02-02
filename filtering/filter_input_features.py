@@ -9,7 +9,7 @@
 
 import gcm_filters
 import xarray as xr
-from xnemogcm import open_domain_cfg, get_metrics
+from xnemogcm import open_domain_cfg, get_metrics, open_nemo_and_domain_cfg
 import xgcm
 import numpy as np
 from datetime import datetime
@@ -25,15 +25,15 @@ logger.info('Begin...')
 
 # ------------ misc parameters ---------------- #
 
-directory = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/SO_JET/'
-mask16_path = [directory + 'mesh_mask_exp16_SO_JET.nc']
-mask025_path = directory + 'mesh_mask_exp4_SO_JET.nc'
-
 region = 'SO_JET'
 
-variable = 'vg'
-variable_to_filter = 'fine_ke'
-variable_name = 'vg'
+directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
+mask16_path = [directory + f'../../features_take2/SO_JET/mesh_mask_exp16_surface_{region}.nc']
+mask025_path = directory + f'../../features_take2/SO_JET/mesh_mask_exp4_{region}.nc'
+
+variable = 'grid_V'
+variable_to_filter = 'vo'
+variable_name = 'vo'
 
 #TODO add xnemo option to load in deformation radius
 
@@ -54,7 +54,7 @@ max_grid_scale = grid_scale.max()
 start_date_init_str = "00610101"
 
 # End date string
-end_date_init_str = "00610201"
+end_date_init_str = "00661201"
 
 
 # Convert date strings to datetime objects
@@ -88,21 +88,31 @@ while current_date_init < end_date_init:
 
     # open dataset using xnemogcm
     # nemo_paths = [directory + f for f in nemo_files]
-    nemo_paths =  [glob.glob(directory + f) for f in nemo_files]
+    nemo_paths = [glob.glob(directory + f) for f in nemo_files]
+    print(nemo_paths)
     # ds = open_nemo_and_domain_cfg(nemo_files=nemo_paths[0],
     #                               domcfg_files=mask16_path)
 
-    domcfg = open_domain_cfg(files = mask16_path)
-    data = xr.open_dataset(nemo_paths[0][0])
 
-    if variable == 'Ld':
-        data = data.rename({'time_counter': 't', 
+    if variable=='bn2':
+        domcfg = open_domain_cfg(files = mask16_path)
+        data = xr.open_dataset(nemo_paths[0][0])
+
+        data = data.rename({'time_counter': 't',
                             'x': 'x_c',
-                            'y': 'y_c'})
-    
+                            'y': 'y_c',
+                            'deptht': 'z_c'})
+        data.coords['z_c'] = domcfg.coords['z_c']
 
-    # merge data and domcfg
-    ds = xr.merge([data, domcfg])
+        # merge data and domcfg
+        ds = xr.merge([data, domcfg])
+
+    else:
+        ds = open_nemo_and_domain_cfg(nemo_files=nemo_paths[0],
+                                  domcfg_files=mask16_path)
+
+    # print(data)
+    # print(domcfg)
 
     # Rechunk the dataset
     ds=ds.chunk(dict(y_c=-1))
@@ -139,7 +149,7 @@ while current_date_init < end_date_init:
         **specs,
         grid_type=gcm_filters.GridType.IRREGULAR_WITH_LAND,
         grid_vars={
-            'wet_mask': wet_mask, 
+            'wet_mask': wet_mask,
             'dxw': dxw, 'dyw': dyw, 'dxs': dxs, 'dys': dys, 'area': area, 
             'kappa_w': kappa.kappa, 'kappa_s': kappa.kappa,
         }
@@ -147,56 +157,59 @@ while current_date_init < end_date_init:
     filter_irregular_with_land
 
     # set up xgcm grid
-    grid = xgcm.Grid(
-                domcfg,
-                metrics=get_metrics(domcfg),
-                )
+    if variable=='bn2':
+        grid = xgcm.Grid(
+                    domcfg,
+                    metrics=get_metrics(domcfg),
+                    )
+    else:
+        grid = xgcm.Grid(
+                    ds,
+                    metrics=get_metrics(ds),
+                    )
 
     bd = {'boundary': 'extend'}
     
-    # interpolate if not gridT and filter
-    if variable == 'vor':
-        ds['vor_c'] = grid.interp(ds.vor, ['X', 'Y'], **bd)
-        ds['vor_f'] = filter_irregular_with_land.apply(ds['vor_c'], 
-                                                           dims=['y_c', 'x_c'])
-    elif variable == 'ke':
+    if variable == 'ke':
         if variable_to_filter == 'coarse_ke':
             ds['mke_f'] = filter_irregular_with_land.apply(
-                ds['coarse_ke'],                                            
+                ds['coarse_ke'],
                 dims=['y_c', 'x_c'])
-            
+
         elif variable_to_filter == 'fine_ke':
             ds['eke_f'] = filter_irregular_with_land.apply(
-                ds['fine_ke'],                                            
+                ds['fine_ke'],
                 dims=['y_c', 'x_c'])
         # variable = 'mke'
-    elif variable == 'ug':
-        ds['ug_c'] = grid.interp(ds.ug, ['X'], **bd)
-        ds['ug_f'] = filter_irregular_with_land.apply(ds['ug_c'], 
+    elif variable == 'grid_U':
+        ds[f'{variable_name}_c'] = grid.interp(ds[variable_name].isel(z_c=0), ['X'], **bd)
+        ds[f'{variable_name}_f'] = filter_irregular_with_land.apply(ds[f'{variable_name}_c'],
                                                            dims=['y_c', 'x_c'])
-        ds['ug_fc'] = grid.interp(ds.ug_f, ['X'], **bd)
-    elif variable == 'vg':
-        ds['vg_c'] = grid.interp(ds.vg, ['Y'], **bd)
-        ds['vg_f'] = filter_irregular_with_land.apply(ds['vg_c'], 
+        ds[f'{variable_name}_fc'] = grid.interp(ds[f'{variable_name}_f'], ['X'], **bd)
+
+    elif variable == 'grid_V':
+        ds[f'{variable_name}_c'] = grid.interp(ds[variable_name].isel(z_c=0), ['Y'], **bd)
+        ds[f'{variable_name}_f'] = filter_irregular_with_land.apply(ds[f'{variable_name}_c'],
                                                            dims=['y_c', 'x_c'])
-        ds['vg_fc'] = grid.interp(ds.vg_f, ['Y'], **bd)
+        ds[f'{variable_name}_fc'] = grid.interp(ds[f'{variable_name}_f'], ['Y'], **bd)
+
     else:
-        ds[f'{variable}_f'] = filter_irregular_with_land.apply(ds[variable], 
+        ds[f'{variable_name}_f'] = filter_irregular_with_land.apply(ds[variable_name],
                                                            dims=['y_c', 'x_c'])
-        
+
     # create dataset
-    if variable =='ug':
+    if variable =='grid_U':
         ds_tmp = xr.Dataset(
             data_vars={
-                f'{variable_name}': (["t", "y_c", "x_f"], 
+                f'{variable_name}': (["t", "y_c", "x_f"],
                             ds[f'{variable_name}_fc'].values),
             },
             coords={
                 "t": (["t"], ds[f'{variable_name}_fc'].t.values,
                             ds[f'{variable_name}_fc'].t.attrs),
-                "gphiu": (["y_c", "x_f"], ds[f'{variable_name}_fc'].gphiu.values, 
+                "gphiu": (["y_c", "x_f"], ds[f'{variable_name}_fc'].gphiu.values,
                         {"standard_name": "Latitude", "units": "degrees_north"}),
-                "glamu": (["y_c", "x_f"], ds[f'{variable_name}_fc'].glamu.values, 
+                "glamu": (["y_c", "x_f"], ds[f'{variable_name}_fc'].glamu.values,
                         {"standard_name": "Longitude","units": "degrees_east"}),
             },
             attrs={
@@ -205,7 +218,7 @@ while current_date_init < end_date_init:
                                 -> ocean U grid variables",
             },
     )
-    elif variable =='vg':
+    elif variable =='grid_V':
         ds_tmp = xr.Dataset(
             data_vars={
                 f'{variable_name}': (["t", "y_f", "x_c"], 
@@ -225,6 +238,27 @@ while current_date_init < end_date_init:
                                 -> ocean V grid variables",
             },
     )
+    elif variable == 'bn2':
+        ds_tmp = xr.Dataset(
+            data_vars={
+                f'{variable_name}': (["t", "z_c", "y_c", "x_c"], 
+                            ds[f'{variable_name}_f'].values),
+            },
+            coords={
+                "t": (["t"], ds[f'{variable_name}_f'].t.values,
+                            ds[f'{variable_name}_f'].t.attrs),
+                "z_c": (["z_c"], ds[f'{variable_name}_f'].z_c.values),
+                "gphit": (["y_c", "x_c"], ds[f'{variable_name}_f'].gphit.values, 
+                        {"standard_name": "Latitude", "units": "degrees_north"}),
+                "glamt": (["y_c", "x_c"], ds[f'{variable_name}_f'].glamt.values, 
+                        {"standard_name": "Longitude","units": "degrees_east"}),
+            },
+            attrs={
+                "name": "NEMO dataset",
+                "description": f"Filtered {variable_name} at cell centre \
+                                -> ocean T grid variables",
+            },
+        )
     else:
         ds_tmp = xr.Dataset(
             data_vars={
@@ -250,15 +284,15 @@ while current_date_init < end_date_init:
     filename = nemo_paths[0][0].split('/')[-1]
     date_end = filename.split('_')[3]
 
-    # extract time counter bounds from original file
-    ref = xr.open_dataset(directory +
-                          f'MINT_1d_{date_init}_{date_end}_{variable}_{region}.nc')
+    # # extract time counter bounds from original file
+    # ref = xr.open_dataset(directory +
+    #                       f'MINT_1d_{date_init}_{date_end}_{variable}_{region}.nc')
 
-    ds_tmp["time_counter_bounds"] = ref["time_counter_bounds"]
+    # ds_tmp["time_counter_bounds"] = ref["time_counter_bounds"]
 
     # save data to netcdf
     output_file = f'MINT_1d_{date_init}_{date_end}_{variable_name}_f_{region}.nc'
 
-    save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/{region}/filtered_data/'
+    save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/filtered_data/'
 
     ds_tmp.to_netcdf(save_directory + output_file)
