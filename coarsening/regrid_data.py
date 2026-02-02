@@ -56,10 +56,10 @@ def create_regridded_dataset(ds_regrid, variable):
 
 region = 'SO_JET'
 
-variable = 'vg'
+variable = 'vo'
 
-directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/{region}/filtered_data/'
-mask_path = [directory + f'../mesh_mask_exp16_{region}.nc']
+directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/filtered_data/'
+mask_path = [directory + f'../mesh_mask_exp16_surface_{region}.nc']
 
 weights_fn = directory + '../weights_SO_JET.nc'
 
@@ -81,11 +81,10 @@ regridder = xe.Regridder(input_grid,
 # -------------------------------------------- #
 
 # Initial date string
-start_date_init_str = "00610101"
+start_date_init_str = "00610201"
 
 # End date string
-end_date_init_str = "00610201"
-
+end_date_init_str = "00661201"
 
 # Convert date strings to datetime objects
 start_date_init = datetime.strptime(start_date_init_str, "%Y%m%d")
@@ -143,11 +142,11 @@ while current_date_init < end_date_init:
 
     bd = {'boundary': 'extend'}
 
-    if variable == 'ug':
-        data['ug'] = grid.interp(data.ug, ['X'], **bd)
+    if variable == 'uo':
+        data['uo'] = grid.interp(data.uo, ['X'], **bd)
         data = data.rename({'gphiu': 'lat', 'glamu': 'lon'})
-    elif variable == 'vg':
-        data['vg'] = grid.interp(data.vg, ['Y'], **bd)
+    elif variable == 'vo':
+        data['vo'] = grid.interp(data.vo, ['Y'], **bd)
         data = data.rename({'gphiv': 'lat', 'glamv': 'lon'})
     else:
     # Rename coordinates to lat and lon for xesmf
@@ -158,22 +157,27 @@ while current_date_init < end_date_init:
     ds_tmp[variable] = regridder(data[variable])
 
     # Rename coordinates back to gphit and glamt
-    if variable == 'ug':
+    if variable == 'uo':
         ds_tmp = ds_tmp.rename({"lat": "gphiu", "lon": "glamu"})
-    elif variable == 'vg':
+    elif variable == 'vo':
         ds_tmp = ds_tmp.rename({"lat": "gphiv", "lon": "glamv"})
     else:
         ds_tmp = ds_tmp.rename({"lat": "gphit", "lon": "glamt"})
 
-    if variable == 'ug':
+    if variable == 'uo':
         ds = ds_tmp
-    elif variable == 'vg':
+        ds = ds.rename({'y': 'y_c', 'x': 'x_f'})
+    elif variable == 'vo':
         ds = ds_tmp
+        ds = ds.rename({'y': 'y_f', 'x': 'x_c'})
+    elif variable == 'vobn2':
+        ds = ds_tmp
+        ds = ds.rename({'y': 'y_c', 'x': 'x_c'})
     else:
         ds = create_regridded_dataset(ds_tmp, variable)
 
     # save data to netcdf
-    output_file = f'MINT_1d_{date_init}_{date_end}_{variable}_c_{region}.nc'
+    output_file = f'MINT_1d_{date_init}_{date_end}_{variable}_cg_{region}.nc'
 
     save_directory = directory + '../coarsened_data/'
 
