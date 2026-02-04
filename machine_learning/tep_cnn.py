@@ -120,6 +120,11 @@ def parse_args():
                          help="Flag to indicate whether to use a learning rate scheduler. \
                             This is exponential decay.") 
     parser.add_argument("--dropout_rate", type=float, default=None, help="Dropout rate for the dropout layers.")
+    
+    # early stopping
+    parser.add_argument("--early_stopping", action="store_true", \
+                        help="Flag to indicate whether to use early stopping during training.")
+
     # key flags associated with training, evaluation, prediction
     parser.add_argument("--train", action="store_true", help="Flag to indicate whether to train the model.")
     parser.add_argument("--evaluate", action="store_true", help="Flag to indicate whether to evaluate the model.")
@@ -171,6 +176,7 @@ def train_model(scenario, ds_training, ds_validation,
                "model_dir": "./",
                "model_filename": None,
                "tensboard_log_dir": None, #TODO this needs a default directory
+               "early_stopping": False,
     }
 
     # overwrite the options by cycling through the input dictionary
@@ -274,17 +280,21 @@ def train_model(scenario, ds_training, ds_validation,
                 histogram_freq=1, 
                 write_images=True,
                 update_freq='epoch',) 
-                )
+            )
     
+    callbacks = [tensorboard_callback]
+
     # TODO set up checkpoint callback to save model weights during training
 
-    #TODO add an early stopping callback
-    earlystopping_callback = keras.callbacks.EarlyStopping(
-                monitor='val_loss',
-                patience=5,
-                min_delta=1e-3,
-                start_from_epoch=20,
-                )
+    # Early stopping callback
+    if opt_dic["early_stopping"]:
+        earlystopping_callback = keras.callbacks.EarlyStopping(
+            monitor='val_loss',
+            patience=10,
+            min_delta=1e-3,
+            start_from_epoch=20,
+        )
+        callbacks.append(earlystopping_callback)
     
     # learning_rate_callback = keras.callbacks.LearningRateScheduler(
     #             scheduler,
@@ -294,15 +304,13 @@ def train_model(scenario, ds_training, ds_validation,
         logger.info('Running model.fit()...')
 
     history = model.fit(
-                        train_generator,
-                        validation_data=val_generator,
-                        epochs=epochs, 
-                        steps_per_epoch=steps_per_epoch,
-                        validation_steps=validation_steps,
-                        callbacks=[
-                                tensorboard_callback,
-                                ],
-                        ) # earlystopping_callback, learning_rate_callback,
+        train_generator,
+        validation_data=val_generator,
+        epochs=epochs, 
+        steps_per_epoch=steps_per_epoch,
+        validation_steps=validation_steps,
+        callbacks=callbacks,
+    )
     
     loss = history.history.get('loss')
     val_loss = history.history.get('val_loss')
@@ -310,35 +318,6 @@ def train_model(scenario, ds_training, ds_validation,
     if opt_dic["verbose"]:    
         logger.info('Training loss history: %s', loss)
         logger.info('Validation loss history: %s', val_loss)
-
-
-    # # Train the model over X epochs for each batch
-    # batch_idx = 1
-    # for batch, val_batch in zip(bgen_training, bgen_validation):
-    #     # prepare training data
-    #     batch_input = [batch[x] for x in sc.input_var]
-    #     batch_target = [batch[x] for x in sc.target]
-    #     batch_input = xr.merge(batch_input).to_array('var').transpose(...,'var')
-    #     batch_target = xr.merge(batch_target).to_array('var').transpose(...,'var')
-        
-    #     # prepare validation data
-    #     val_input = [val_batch[x] for x in sc.input_var]
-    #     val_target = [val_batch[x] for x in sc.target]
-    #     val_input = xr.merge(val_input).to_array('var').transpose(...,'var')
-    #     val_target = xr.merge(val_target).to_array('var').transpose(...,'var')
-
-    #     model.fit(batch_input.to_numpy(), 
-    #               batch_target.to_numpy(),
-    #               validation_data=(val_input.to_numpy(), val_target.to_numpy()),
-    #               epochs=epochs, 
-    #               batch_size=batch_size, 
-    #               callbacks=[tensorboard_callback]
-    #             )
-
-    #     if opt_dic["verbose"]:    
-    #         logger.info('End of batch: %s', batch_idx)
-
-    #     batch_idx+=1
 
     return model
 
@@ -677,7 +656,7 @@ if __name__ == "__main__": # executed when run as a script, not when imported as
         # ----------------------------
         test_idx = np.arange(nt - n_test, nt)
         val_idx  = np.arange(nt - n_test - n_val, nt - n_test)
-        train_idx_full = np.arange(0, nt - n_test - n_val)
+        train_idx_full = np.arange(1, nt - n_test - n_val) # start from day 2 as tendency starts from day 2
 
         # ----------------------------
         # 4. Subsample training every 1st day
@@ -748,6 +727,7 @@ if __name__ == "__main__": # executed when run as a script, not when imported as
                         "model_dir": model_directory,
                         "model_filename": args.model_filename,
                         "tensboard_log_dir": args.tensboard_log_dir,
+                        "early_stopping": args.early_stopping,
                         }
                 model = train_model(scenario, 
                                     ds_flat,
@@ -767,6 +747,7 @@ if __name__ == "__main__": # executed when run as a script, not when imported as
                         "pickup": args.pickup,
                         "current_period": current_period,
                         "tensboard_log_dir": args.tensboard_log_dir,
+                        "early_stopping": args.early_stopping,
                         }
                 model = train_model(scenario, 
                                     ds_flat,
@@ -818,6 +799,7 @@ if __name__ == "__main__": # executed when run as a script, not when imported as
                         "pickup": args.pickup,
                         "current_period": f"{current_period}_fold{fold_idx+1}",
                         "tensboard_log_dir": args.tensboard_log_dir,
+                        "early_stopping": args.early_stopping,
                         }
                 model = train_model(scenario, 
                                     ds_training_fold,

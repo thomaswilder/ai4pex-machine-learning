@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --partition=standard
-#SBATCH --job-name=cnn_train_partial
+#SBATCH --job-name=cnn_train_es
 #SBATCH -o %j.out
 #SBATCH -e %j.err
 #SBATCH --time=03:00:00
@@ -32,7 +32,7 @@ filters="128 64 32 16 8 1"
 kernels="(5,5) (5,5) (3,3) (3,3) (3,3) (3,3)"
 padding="(2,2) (2,2) (1,1) (1,1) (1,1) (1,1)"
 batch_size="15" 
-epochs="100"
+epochs="50"
 learning_rate="0.001"
 dropout_rate="0.2" # 0.2
 kfold="1"
@@ -67,6 +67,7 @@ if [ "$MODE" == "train" ]; then
         --train \
         --local_norm \
         --verbose \
+        --early_stopping \
         --verbose_output_filename "$verbose_output_filename" \
         --learning_rate "$learning_rate" \
         --dropout_rate "$dropout_rate"
