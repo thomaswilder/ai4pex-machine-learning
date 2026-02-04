@@ -22,12 +22,12 @@ model_filename="cnn_20251118-175732_fold5.keras" # used for pickup and evaluate
 data_filenames="MINT_1d_0061-0072_sa_c_{domain}.nc \
     MINT_1d_0061-0072_vor_cg_{domain}_mod.nc \
     MINT_1d_0061-0072_eke_c_{domain}_shifted.nc \
-    MINT_1d_0061-0072_eke_c_{domain}.nc \
+    MINT_1d_0061-0072_eke_tendency_c_{domain}.nc \
     MINT_1d_0061-0072_mke_c_{domain}.nc \
     mesh_mask_exp4_{domain}_xnemo.nc"
 
 features="mke vor sa eke_shift" 
-target="eke"
+target="eke_tendency"
 filters="128 64 32 16 8 1"
 kernels="(5,5) (5,5) (3,3) (3,3) (3,3) (3,3)"
 padding="(2,2) (2,2) (1,1) (1,1) (1,1) (1,1)"

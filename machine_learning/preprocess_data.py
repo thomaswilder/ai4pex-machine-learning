@@ -259,13 +259,15 @@ class data_preparation:
 
     def natural_log_transform_target(self):
         for variable in self.sc.target:
-            self.ds[variable + "_log"] = xr.apply_ufunc(
-                np.log, self.ds[variable].compute(),
-                input_core_dims=[['t', 'y_c', 'x_c']],
-                output_core_dims=[['t', 'y_c', 'x_c']],
-            )
-            self.ds[variable + "_log"] = self.ds[variable + "_log"].fillna(0) 
-            self.sc.target = [variable + "_log"]
+            # only log transform eke
+            if variable == 'eke':
+                self.ds[variable + "_log"] = xr.apply_ufunc(
+                    np.log, self.ds[variable].compute(),
+                    input_core_dims=[['t', 'y_c', 'x_c']],
+                    output_core_dims=[['t', 'y_c', 'x_c']],
+                )
+                self.ds[variable + "_log"] = self.ds[variable + "_log"].fillna(0) 
+                self.sc.target = [variable + "_log"]
 
     def mask_data(self):
         for variable in self.sc.input_var + self.sc.target:
