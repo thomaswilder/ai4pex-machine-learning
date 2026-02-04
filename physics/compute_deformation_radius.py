@@ -4,10 +4,12 @@
     Description: Calculates baroclinic deformation radius from NEMO DINO data.
 
     Note: This script is modified slightly from the script in ORCA36 directory.
+        Also, have made some adjustments to compute Ld from cg data - See #!
 '''
 
 import os
 import xarray as xr
+from xnemogcm import open_domain_cfg
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import numpy as np
@@ -20,22 +22,22 @@ logging.basicConfig(filename='compute_deformation_radius.log', level=logging.DEB
 
 logger.info('Begin...')
 
+region = 'SO_JET'
 
-directory = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/'
-mask_path = '~/Python/AI4PEX/DINO/mesh_mask_exp16.nc'
+directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
+# mask_path = '~/Python/AI4PEX/DINO/mesh_mask_exp4_SO_JET.nc'
+mask_path = [directory + f'mesh_mask_exp16_{region}.nc']
 
 # open mask dataset
-mask = xr.open_dataset(mask_path)
+mask = open_domain_cfg(files = mask_path)
 logger.info('Mask dataset is: %s', mask)
 # print(mask.e3t_0)
 
 # Initial date string
-start_date_init_str = "00710701"
+start_date_init_str = "00610201"
 
 # End date string
-end_date_init_str = "00730101"
-# end_date_init_str = "00730101"
-
+end_date_init_str = "00690301"
 
 # Convert date strings to datetime objects
 start_date_init = datetime.strptime(start_date_init_str, "%Y%m%d")
@@ -66,26 +68,48 @@ while current_date_init < end_date_init:
     current_date_init = next_date_init
 
     # set nemo filename using dates
-    nemo_files = [f'MINT_1d_{date_init}_*_bn2.nc']
+    #! changes to nemo filename
+    nemo_files = [f'MINT_1d_{date_init}_*_bn2_{region}.nc']
 
     # get path
-    nemo_paths =  [glob.glob(directory + f) for f in nemo_files]
+    nemo_paths = [glob.glob(directory + f) for f in nemo_files]
     print(nemo_paths)
 
     # open dataset
     ds = xr.open_dataset(nemo_paths[0][0])
 
-    # rename coordinate
-    ds = ds.rename({'deptht': 'nav_lev'})
 
-    e3t = mask.e3t_0.squeeze('time_counter').\
-            expand_dims({'time_counter': ds.vobn2.time_counter})
-    # logger.info('e3t is: %s', e3t)
-    tmask = mask.tmask.squeeze('time_counter').\
-            expand_dims({'time_counter': ds.vobn2.time_counter})
-    # logger.info('tmask is: %s', tmask)
-    ff_t = mask.ff_t.squeeze('time_counter').\
-            expand_dims({'time_counter': ds.vobn2.time_counter})
+    # select 0-29 index for computation
+    # ds = data.isel(z_c=slice(0,29))
+    # mask = mask.isel(z_c=slice(0,29))
+
+    # rename coordinate
+    #! deptht is now z_c
+    ds = ds.rename({'deptht': 'z_c', 
+                    'time_counter': 't',
+                    'y': 'y_c',
+                    'x': 'x_c'})
+    
+    ds['z_c'] = mask['z_c']
+
+    logger.info('Dataset is: %s', ds)
+
+    #! ds.vobn2.t where t used to be time_counter
+    # e3t = mask.e3t_0.squeeze('time_counter').\
+    #         expand_dims({'time_counter': ds.vobn2.t})
+    # logger.info('e3t is: %s', mask.e3t_0)
+    # e3t = mask.e3t_0.expand_dims({'t': ds.time_counter})
+    e3t = mask.e3t_0.expand_dims(t=ds.t)
+    logger.info('e3t is: %s', e3t)
+    # tmask = mask.tmask.squeeze('time_counter').\
+    #         expand_dims({'time_counter': ds.vobn2.t})
+    # tmask = mask.tmask.expand_dims({'t': ds.time_counter})
+    tmask = mask.tmask.expand_dims(t=ds.t)
+    # # logger.info('tmask is: %s', tmask)
+    # ff_t = mask.ff_t.squeeze('time_counter').\
+    #         expand_dims({'time_counter': ds.vobn2.t})
+    # ff_t = mask.ff_t.expand_dims({'t': ds.time_counter})
+    ff_t = mask.ff_t.expand_dims(t=ds.t)
     # logger.info('ff_t is: %s', ff_t)
 
     # deal with negative values and save to file
@@ -102,36 +126,57 @@ while current_date_init < end_date_init:
     ds_tmp1['N'] = np.sqrt(ds_tmp.N2)
     ds_tmp1.to_netcdf(directory + "N_temp.nc")
 
+    logger.info('Ld Dataset is: %s', ds_tmp1)
+
     # open buoyancy frequency file
     ds_tmp = xr.open_dataset(directory + "N_temp.nc")
     
     # compute deformation radius in km
     ds_tmp1 = xr.Dataset()
     ds_tmp1['Ld'] = ((ds_tmp.N*e3t)
-                     .sum(dim='nav_lev')/(np.abs(ff_t)*1000.0))
+                     .sum(dim='z_c')/(np.abs(ff_t)*1000.0))
 
     # logger.info('Ld Dataset is: %s', ds_tmp1)
     # print(ds_tmp1)
     
     # set land values to nan
     ds_tmp = xr.Dataset()
-    ds_tmp["Ld"] = ds_tmp1.Ld*tmask.isel(nav_lev=0)
+    ds_tmp["Ld"] = ds_tmp1.Ld*tmask.isel(z_c=0)
     # ds_tmp["Ld"] = xr.where(ds_tmp1.Ld==0, np.nan, ds_tmp1.Ld)
 
     logger.info('masked Dataset is: %s', ds_tmp)
     # print(ds_tmp)
 
     # create dataset
+    # ds = xr.Dataset(
+    #     data_vars={
+    #         'Ld': (["time_counter", "y", "x"], ds_tmp.Ld.values),
+    #     },
+    #     coords={
+    #         "time_counter": (["time_counter"], ds_tmp.time_counter.values,
+    #                          ds_tmp.time_counter.attrs),
+    #         "gphit": (["y", "x"], mask.gphit.isel(time_counter=0).values,
+    #                   {"standard_name": "Latitude", "units": "degrees_north"}),
+    #         "glamt": (["y", "x"], mask.glamt.isel(time_counter=0).values,
+    #                   {"standard_name": "Longitude", "units": "degrees_east"}),
+    #     },
+    #     attrs={
+    #         "name": "NEMO dataset",
+    #         "description": "Deformation radius \
+    #                           -> ocean T grid variables",
+    #     },
+    # )
+    #! use xnemo format
     ds = xr.Dataset(
         data_vars={
-            'Ld': (["time_counter", "y", "x"], ds_tmp.Ld.values),
+            'Ld': (["t", "y_c", "x_c"], ds_tmp.Ld.values),
         },
         coords={
-            "time_counter": (["time_counter"], ds_tmp.time_counter.values,
-                             ds_tmp.time_counter.attrs),
-            "gphit": (["y", "x"], mask.gphit.isel(time_counter=0).values,
+            "t": (["t"], ds_tmp.t.values,
+                             ds_tmp.t.attrs),
+            "gphit": (["y_c", "x_c"], mask.gphit.values,
                       {"standard_name": "Latitude", "units": "degrees_north"}),
-            "glamt": (["y", "x"], mask.glamt.isel(time_counter=0).values,
+            "glamt": (["y_c", "x_c"], mask.glamt.values,
                       {"standard_name": "Longitude", "units": "degrees_east"}),
         },
         attrs={
@@ -144,19 +189,19 @@ while current_date_init < end_date_init:
     # extract date_end from nemo_paths
     filename = nemo_paths[0][0].split('/')[-1]
     date_end = filename.split('_')[3]
-    date_end
+    # date_end
 
-    # extract time counter bounds from original file
-    ref_dir = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production/OUTPUTS/'
-    ref = xr.open_dataset(ref_dir + 
-                          f'MINT_1d_{date_init}_{date_end}_grid_T.nc')
+    # # extract time counter bounds from original file
+    # ref_dir = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production/OUTPUTS/'
+    # ref = xr.open_dataset(ref_dir + 
+    #                       f'MINT_1d_{date_init}_{date_end}_grid_T.nc')
     
-    ds["time_counter_bounds"] = ref["time_counter_bounds"]
+    # ds["time_counter_bounds"] = ref["time_counter_bounds"]
 
     # save to netcdf
-    output_file = f'MINT_1d_{date_init}_{date_end}_Ld.nc'
+    output_file = f'MINT_1d_{date_init}_{date_end}_Ld_{region}.nc'
 
-    save_directory = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/'
+    save_directory = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/SO_JET/'
 
     logger.info('Saving deformation radius to: %s', save_directory + output_file)
 
