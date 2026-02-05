@@ -223,7 +223,7 @@ class data_preparation:
 
         return self.ds, self.mask
 
-    def natural_log_transform_input(self):
+    def transform_input(self):
         for variable in self.sc.input_var:
             # if variable=="coarse_ke_f" or variable=="slope":
             if variable == 'mke' or variable == 'eke_shift':
@@ -234,6 +234,15 @@ class data_preparation:
                 )
                 self.ds[variable + "_log"] = self.ds[variable + "_log"].fillna(0) 
                 self.sc.input_var[self.sc.input_var.index(variable)] = variable + "_log"
+            # apply a asinh transform to vorticity
+            if variable == 'vor':
+                self.ds[variable + "_asinh"] = xr.apply_ufunc(
+                    np.arcsinh, (self.ds[variable] / 1e-4).compute(),
+                    input_core_dims=[['t', 'y_c', 'x_c']],
+                    output_core_dims=[['t', 'y_c', 'x_c']],
+                )
+                self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].fillna(0) 
+                self.sc.input_var[self.sc.input_var.index(variable)] = variable + "_asinh"
 
 
     def normalize_data(self):
@@ -257,7 +266,7 @@ class data_preparation:
             self.ds[variable] = (( self.ds[variable] - mean ) / std).compute()
             self.ds[variable] = self.ds[variable].fillna(0)
 
-    def natural_log_transform_target(self):
+    def transform_target(self):
         for variable in self.sc.target:
             # only log transform eke
             if variable == 'eke':
@@ -268,6 +277,15 @@ class data_preparation:
                 )
                 self.ds[variable + "_log"] = self.ds[variable + "_log"].fillna(0) 
                 self.sc.target = [variable + "_log"]
+            # apply a asinh transform to eke tendency
+            if variable == 'eke_tendency':
+                self.ds[variable + "_asinh"] = xr.apply_ufunc(
+                    np.arcsinh, (self.ds[variable] / 1e-6).compute(),
+                    input_core_dims=[['t', 'y_c', 'x_c']],
+                    output_core_dims=[['t', 'y_c', 'x_c']],
+                )
+                self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].fillna(0) 
+                self.sc.target = [variable + "_asinh"]
 
     def mask_data(self):
         for variable in self.sc.input_var + self.sc.target:
@@ -282,9 +300,9 @@ class data_preparation:
                 print(f"Variable {variable} not found in dataset.")
  
     def __call__(self):
-        self.natural_log_transform_input()
+        self.transform_input()
         self.normalize_data()
-        self.natural_log_transform_target()
+        self.transform_target()
         self.mask_data()
         return self.ds
 
