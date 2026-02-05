@@ -236,13 +236,15 @@ class data_preparation:
                 self.sc.input_var[self.sc.input_var.index(variable)] = variable + "_log"
             # apply a asinh transform to vorticity
             if variable == 'vor':
+                asinh_scale = 1e-4
                 self.ds[variable + "_asinh"] = xr.apply_ufunc(
-                    np.arcsinh, (self.ds[variable] / 1e-4).compute(),
+                    np.arcsinh, (self.ds[variable] / asinh_scale).compute(),
                     input_core_dims=[['t', 'y_c', 'x_c']],
                     output_core_dims=[['t', 'y_c', 'x_c']],
                 )
                 self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].fillna(0) 
                 self.sc.input_var[self.sc.input_var.index(variable)] = variable + "_asinh"
+                self.ds[variable + "_asinh"].attrs["asinh_scale"] = asinh_scale
 
 
     def normalize_data(self):
@@ -279,13 +281,15 @@ class data_preparation:
                 self.sc.target = [variable + "_log"]
             # apply a asinh transform to eke tendency
             if variable == 'eke_tendency':
+                asinh_scale = 1e-6
                 self.ds[variable + "_asinh"] = xr.apply_ufunc(
-                    np.arcsinh, (self.ds[variable] / 1e-6).compute(),
+                    np.arcsinh, (self.ds[variable] / asinh_scale).compute(),
                     input_core_dims=[['t', 'y_c', 'x_c']],
                     output_core_dims=[['t', 'y_c', 'x_c']],
                 )
                 self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].fillna(0) 
                 self.sc.target = [variable + "_asinh"]
+                self.ds[variable + "_asinh"].attrs["asinh_scale"] = asinh_scale
 
     def mask_data(self):
         for variable in self.sc.input_var + self.sc.target:
