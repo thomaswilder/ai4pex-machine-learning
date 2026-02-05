@@ -244,7 +244,7 @@ class data_preparation:
                 )
                 self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].fillna(0) 
                 self.sc.input_var[self.sc.input_var.index(variable)] = variable + "_asinh"
-                self.ds[variable + "_asinh"].attrs["asinh_scale"] = asinh_scale
+                self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].assign_attrs({"asinh_scale": asinh_scale})
 
 
     def normalize_data(self):
@@ -289,7 +289,7 @@ class data_preparation:
                 )
                 self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].fillna(0) 
                 self.sc.target = [variable + "_asinh"]
-                self.ds[variable + "_asinh"].attrs["asinh_scale"] = asinh_scale
+                self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].assign_attrs({"asinh_scale": asinh_scale})
 
     def mask_data(self):
         for variable in self.sc.input_var + self.sc.target:
