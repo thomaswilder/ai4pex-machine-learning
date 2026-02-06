@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+#TODO break up this script into components
+# e.g. loading modules that train the model, ....
+
 """
 tep_cnn.py
 
@@ -647,7 +650,7 @@ if __name__ == "__main__": # executed when run as a script, not when imported as
         # ----------------------------
         n_test = 359     # one less due to eke shift
         n_val  = 360    # 60 days before test
-        train_stride = 5  # every 4th day
+        train_stride = 1  # every day
 
         nt = ds.sizes["t"]
 
