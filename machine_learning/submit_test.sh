@@ -10,4 +10,4 @@
 
 export PATH="/home/users/twilder/Python/AI4PEX/tensorflow_env/bin:$PATH"
 
-python yml_test.py --config ./config_cnn.yml
+python yml_test.py --config ./config_cnn.yml --dropout_rate 0.1 --epochs 10
