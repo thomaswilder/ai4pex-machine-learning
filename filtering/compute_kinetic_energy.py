@@ -8,7 +8,7 @@
 import glob
 import gcm_filters
 import xarray as xr
-from xnemogcm import open_domain_cfg, get_metrics
+from xnemogcm import open_domain_cfg, get_metrics, open_nemo_and_domain_cfg
 import xgcm
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -25,14 +25,14 @@ logger.info('Begin...')
 
 region = 'SO_JET'
 
-directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/{region}/'
-mask_path = [directory + f'mesh_mask_exp16_{region}.nc']
+directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
+mask_path = [directory + f'../../features_take2/{region}/mesh_mask_exp16_surface_{region}.nc']
 
 # Initial date string
-start_date_init_str = "00610101"
+start_date_init_str = "00610201"
 
 # End date string
-end_date_init_str = "00610201"
+end_date_init_str = "00730101"
 
 # scale deformation radius
 ld_scaling = 3
@@ -41,7 +41,8 @@ ld_scaling = 3
 # -------------------------------------------- #
 # get max deformation radius in metres
 #TODO need to time average Ld and load this in
-ld = xr.open_dataset(directory + f'MINT_1d_00610101_00721230_Ld_{region}.nc')
+directory_ld = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
+ld = xr.open_dataset(directory_ld + f'MINT_1d_00610101_00721230_Ld_{region}.nc')
 
 # #! temporary until Ld is complete
 # ld_mean = ld.Ld.mean(dim='time_counter', skipna=True)
@@ -55,12 +56,12 @@ ld = xr.open_dataset(directory + f'MINT_1d_00610101_00721230_Ld_{region}.nc')
 ld = ld_scaling * ld.Ld
 
 # get max Ld (scaling)
-Lmax = 1000*ld.max(dim=['x', 'y'], skipna=True).values
+Lmax = 1000*ld.max(dim=['x_c', 'y_c'], skipna=True).values
 
 # set kappa as a scale of deformation radius
 kappa = (1000*ld)**2 / Lmax**2
-kappa = kappa.swap_dims({"x": "x_c"})
-kappa = kappa.swap_dims({"y": "y_c"})
+# kappa = kappa.swap_dims({"x": "x_c"})
+# kappa = kappa.swap_dims({"y": "y_c"})
 # -------------------------------------------- #
 
 # Convert date strings to datetime objects
@@ -91,8 +92,8 @@ while current_date_init < end_date_init:
     current_date_init = next_date_init
 
     # set nemo filename using dates
-    nemo_files = [f'MINT_1d_{date_init}_*_ug_{region}.nc',
-                  f'MINT_1d_{date_init}_*_vg_{region}.nc']
+    nemo_files = [f'MINT_1d_{date_init}_*_grid_U_{region}.nc',
+                  f'MINT_1d_{date_init}_*_grid_V_{region}.nc']
     print(nemo_files)
 
     nemo_paths = [glob.glob(directory + f) for f in nemo_files]
@@ -106,14 +107,16 @@ while current_date_init < end_date_init:
     nemo_files = [nemo_paths[0][0].split('/')[-1], nemo_paths[1][0].split('/')[-1]]
 
     # open dataset using xnemogcm
-    # nemo_paths = [directory + f for f in nemo_files]
-    # ds = open_nemo_and_domain_cfg(nemo_files=nemo_paths,
-    #                               domcfg_files=mask_path)
-
     nemo_paths = [directory + f for f in nemo_files]
-    domcfg = open_domain_cfg(files=mask_path)
-    dataU = xr.open_dataset(nemo_paths[0])
-    dataV = xr.open_dataset(nemo_paths[1])
+    ds = open_nemo_and_domain_cfg(nemo_files=nemo_paths,
+                                  domcfg_files=mask_path)
+    
+    logger.info('Dataset is: %s', ds)
+
+    # nemo_paths = [directory + f for f in nemo_files]
+    # domcfg = open_domain_cfg(files=mask_path)
+    # dataU = xr.open_dataset(nemo_paths[0])
+    # dataV = xr.open_dataset(nemo_paths[1])
     
     #! just for testing
     # subset ds for first 2 time steps
@@ -122,27 +125,28 @@ while current_date_init < end_date_init:
     # dataV = dataV.isel(t=slice(0,2))
     
     # Rechunk the dataset
-    domcfg = domcfg.chunk(dict(y_c=-1))
-    domcfg = domcfg.chunk(dict(x_f=-1))
-    domcfg = domcfg.chunk(dict(y_f=-1))
-    domcfg = domcfg.chunk(dict(x_c=-1))
+    ds = ds.chunk(dict(y_c=-1))
+    ds = ds.chunk(dict(x_f=-1))
+    ds = ds.chunk(dict(y_f=-1))
+    ds = ds.chunk(dict(x_c=-1))
 
     # Need west and south scale factor convention for irregular filter on tripolar grid
-    dxw = domcfg.e1u.roll(x_f=-1, roll_coords=False)  # x-spacing centered at western T-cell edge in m
-    dyw = domcfg.e2u.roll(x_f=-1, roll_coords=False)  # y-spacing centered at western T-cell edge in m
-    dxs = domcfg.e1v.roll(y_f=-1, roll_coords=False)  # x-spacing centered at southern T-cell edge in m
-    dys = domcfg.e2v.roll(y_f=-1, roll_coords=False)  # y-spacing centered at southern T-cell edge in m
+    dxw = ds.e1u.roll(x_f=-1, roll_coords=False)  # x-spacing centered at western T-cell edge in m
+    dyw = ds.e2u.roll(x_f=-1, roll_coords=False)  # y-spacing centered at western T-cell edge in m
+    dxs = ds.e1v.roll(y_f=-1, roll_coords=False)  # x-spacing centered at southern T-cell edge in m
+    dys = ds.e2v.roll(y_f=-1, roll_coords=False)  # y-spacing centered at southern T-cell edge in m
 
     # Ensure that coordinates are the same
-    wet_mask = domcfg.tmask.isel(z_c=0)
+    wet_mask = ds.tmask.isel(z_c=0)
     dxw = dxw.swap_dims({"x_f": "x_c"})
     dyw = dyw.swap_dims({"x_f": "x_c"})
     dxs = dxs.swap_dims({"y_f": "y_c"})
     dys = dys.swap_dims({"y_f": "y_c"})
-    area = domcfg.e1t * domcfg.e2t
+    area = ds.e1t * ds.e2t
 
     # find minimum grid spacing
-    dx_min = min(domcfg.e1t.where(domcfg.tmask.isel(z_c=0)).min(), domcfg.e2t.where(domcfg.tmask.isel(z_c=0)).min())
+    dx_min = min(ds.e1t.where(ds.tmask.isel(z_c=0)).min(), \
+                  ds.e2t.where(ds.tmask.isel(z_c=0)).min())
     dx_min = dx_min.values
 
     # set up the filter
@@ -172,15 +176,15 @@ while current_date_init < end_date_init:
                 # )
     
     grid = xgcm.Grid(
-                domcfg,
-                metrics=get_metrics(domcfg),
+                ds,
+                metrics=get_metrics(ds),
     )
     
     # interpolate velocity to t-grid point
     # ds_tmp = xr.Dataset()
     logger.info('Interpolating velocities to t-grid')
-    uo_c = grid.interp(dataU.ug, 'X', boundary='extend').persist()
-    vo_c = grid.interp(dataV.vg, 'Y', boundary='extend').persist()
+    uo_c = grid.interp(ds.uo.isel(z_c=0), 'X', boundary='extend').persist()
+    vo_c = grid.interp(ds.vo.isel(z_c=0), 'Y', boundary='extend').persist()
 
     # logger.info('Writing interpolated velocity to temp file')
     # ds_tmp.to_netcdf(directory + "temp_velocity_on_tgrid.nc")
@@ -239,7 +243,7 @@ while current_date_init < end_date_init:
     # create dataset for xnemo readable
     ds_eke = xr.Dataset(
         data_vars={
-            'bare_ke': (["y_c", "x_c", "t"], 
+            'bare_ke': (["t", "y_c", "x_c"], 
                         bare_ke.values),
             'coarse_ke': (["t", "y_c", "x_c"], 
                         coarse_ke.values),
@@ -247,11 +251,11 @@ while current_date_init < end_date_init:
                         fine_ke.values),
         },
         coords={
-            "t": (["t"], dataU.t.values,
-                        dataU.t.attrs),
-            "gphit": (["y_c", "x_c"], domcfg.gphit.values, 
+            "t": (["t"], ds.t.values,
+                        ds.t.attrs),
+            "gphit": (["y_c", "x_c"], ds.gphit.values, 
                       {"standard_name": "Latitude", "units": "degrees_north"}),
-            "glamt": (["y_c", "x_c"], domcfg.glamt.values, 
+            "glamt": (["y_c", "x_c"], ds.glamt.values, 
                       {"standard_name": "Longitude","units": "degrees_east"}),
         },
         attrs={
@@ -264,17 +268,16 @@ while current_date_init < end_date_init:
 
 
     # extract time counter bounds from original file
-    ref_dir = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production/OUTPUTS/'
-    ref = xr.open_dataset(ref_dir + 
-                          f'MINT_1d_{date_init}_{date_end}_grid_T.nc')
+    # ref_dir = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
+    # ref = xr.open_dataset(ref_dir + 
+    #                       f'MINT_1d_{date_init}_{date_end}_grid_T_{region}.nc')
     
-    ds_eke["time_counter_bounds"] = ref["time_counter_bounds"]
+    # ds_eke["time_counter_bounds"] = ref["time_counter_bounds"]
 
     # save to netcdf
     output_file = f'MINT_1d_{date_init}_{date_end}_ke_{region}.nc'
 
-    save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/{region}/'
-
+    save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}//'
     logger.info('Saving kinetic energy to: %s', save_directory + output_file)
 
     ds_eke.to_netcdf(save_directory + output_file)
