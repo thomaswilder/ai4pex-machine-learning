@@ -27,13 +27,17 @@ logger.info('Begin...')
 
 region = 'SO_JET'
 
-directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
-mask16_path = [directory + f'../../features_take2/SO_JET/mesh_mask_exp16_surface_{region}.nc']
-mask025_path = directory + f'../../features_take2/SO_JET/mesh_mask_exp4_{region}.nc'
+# directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
+# mask16_path = [directory + f'../../features_take2/{region}/mesh_mask_exp16_surface_{region}.nc']
+# mask025_path = directory + f'../../features_take2/{region}/mesh_mask_exp4_{region}.nc'
 
-variable = 'grid_V'
-variable_to_filter = 'vo'
-variable_name = 'vo'
+directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
+mask16_path = [directory + f'mesh_mask_exp16_{region}.nc']
+mask025_path = directory + f'mesh_mask_exp4_{region}.nc'
+
+variable = 'bn2'
+variable_to_filter = 'vobn2'
+variable_name = 'vobn2'
 
 #TODO add xnemo option to load in deformation radius
 
@@ -51,10 +55,10 @@ max_grid_scale = grid_scale.max()
 # -------------------------------------------- #
 
 # Initial date string
-start_date_init_str = "00610101"
+start_date_init_str = "00690401"
 
 # End date string
-end_date_init_str = "00661201"
+end_date_init_str = "00730101"
 
 
 # Convert date strings to datetime objects

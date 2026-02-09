@@ -24,9 +24,14 @@ logger.info('Begin...')
 
 region = 'SO_JET'
 
-directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
-# mask_path = '~/Python/AI4PEX/DINO/mesh_mask_exp4_SO_JET.nc'
-mask_path = [directory + f'mesh_mask_exp16_{region}.nc']
+mode = 'cg'
+
+if mode == 'cg':
+    directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/coarsened_data/'
+    mask_path = [directory + f'../mesh_mask_exp4_{region}.nc']
+else:
+    directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
+    mask_path = [directory + f'mesh_mask_exp16_{region}.nc']
 
 # open mask dataset
 mask = open_domain_cfg(files = mask_path)
@@ -37,7 +42,7 @@ logger.info('Mask dataset is: %s', mask)
 start_date_init_str = "00610201"
 
 # End date string
-end_date_init_str = "00690301"
+end_date_init_str = "00730101"
 
 # Convert date strings to datetime objects
 start_date_init = datetime.strptime(start_date_init_str, "%Y%m%d")
@@ -69,7 +74,10 @@ while current_date_init < end_date_init:
 
     # set nemo filename using dates
     #! changes to nemo filename
-    nemo_files = [f'MINT_1d_{date_init}_*_bn2_{region}.nc']
+    if mode == 'cg':
+        nemo_files = [f'MINT_1d_{date_init}_*_vobn2_cg_{region}.nc']
+    else:
+        nemo_files = [f'MINT_1d_{date_init}_*_bn2_{region}.nc']
 
     # get path
     nemo_paths = [glob.glob(directory + f) for f in nemo_files]
@@ -85,12 +93,13 @@ while current_date_init < end_date_init:
 
     # rename coordinate
     #! deptht is now z_c
-    ds = ds.rename({'deptht': 'z_c', 
-                    'time_counter': 't',
-                    'y': 'y_c',
-                    'x': 'x_c'})
-    
-    ds['z_c'] = mask['z_c']
+    if mode != 'cg':
+        ds = ds.rename({'deptht': 'z_c', 
+                        'time_counter': 't',
+                        'y': 'y_c',
+                        'x': 'x_c'})
+        
+        ds['z_c'] = mask['z_c']
 
     logger.info('Dataset is: %s', ds)
 
@@ -189,19 +198,14 @@ while current_date_init < end_date_init:
     # extract date_end from nemo_paths
     filename = nemo_paths[0][0].split('/')[-1]
     date_end = filename.split('_')[3]
-    # date_end
 
-    # # extract time counter bounds from original file
-    # ref_dir = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production/OUTPUTS/'
-    # ref = xr.open_dataset(ref_dir + 
-    #                       f'MINT_1d_{date_init}_{date_end}_grid_T.nc')
-    
-    # ds["time_counter_bounds"] = ref["time_counter_bounds"]
-
-    # save to netcdf
-    output_file = f'MINT_1d_{date_init}_{date_end}_Ld_{region}.nc'
-
-    save_directory = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/SO_JET/'
+    # save data to netcdf
+    if mode == 'cg':
+        output_file = f'MINT_1d_{date_init}_{date_end}_Ld_cg_{region}.nc'
+        save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/coarsened_data/'
+    else:
+        output_file = f'MINT_1d_{date_init}_{date_end}_Ld_{region}.nc'
+        save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
 
     logger.info('Saving deformation radius to: %s', save_directory + output_file)
 
