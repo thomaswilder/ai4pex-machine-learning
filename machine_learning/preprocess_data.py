@@ -235,16 +235,16 @@ class data_preparation:
                 self.ds[variable + "_log"] = self.ds[variable + "_log"].fillna(0) 
                 self.sc.input_var[self.sc.input_var.index(variable)] = variable + "_log"
             # apply a asinh transform to vorticity
-            if variable == 'vor':
-                asinh_scale = 1e-4
-                self.ds[variable + "_asinh"] = xr.apply_ufunc(
-                    np.arcsinh, (self.ds[variable] / asinh_scale).compute(),
-                    input_core_dims=[['t', 'y_c', 'x_c']],
-                    output_core_dims=[['t', 'y_c', 'x_c']],
-                )
-                self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].fillna(0) 
-                self.sc.input_var[self.sc.input_var.index(variable)] = variable + "_asinh"
-                self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].assign_attrs({"asinh_scale": asinh_scale})
+            # if variable == 'vor':
+            #     asinh_scale = 1e-4
+            #     self.ds[variable + "_asinh"] = xr.apply_ufunc(
+            #         np.arcsinh, (self.ds[variable] / asinh_scale).compute(),
+            #         input_core_dims=[['t', 'y_c', 'x_c']],
+            #         output_core_dims=[['t', 'y_c', 'x_c']],
+            #     )
+            #     self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].fillna(0) 
+            #     self.sc.input_var[self.sc.input_var.index(variable)] = variable + "_asinh"
+            #     self.ds[variable + "_asinh"] = self.ds[variable + "_asinh"].assign_attrs({"asinh_scale": asinh_scale})
 
 
     def normalize_data(self):
