@@ -226,7 +226,7 @@ class data_preparation:
     def transform_input(self):
         for variable in self.sc.input_var:
             # if variable=="coarse_ke_f" or variable=="slope":
-            if variable == 'mke' or variable == 'eke_shift':
+            if variable == 'coarse_ke' or variable == 'fine_ke_shift':
                 self.ds[variable + "_log"] = xr.apply_ufunc(
                     np.log, self.ds[variable].compute(),
                     input_core_dims=[['t', 'y_c', 'x_c']],
@@ -270,8 +270,8 @@ class data_preparation:
 
     def transform_target(self):
         for variable in self.sc.target:
-            # only log transform eke
-            if variable == 'eke':
+            # only log transform fine_ke
+            if variable == 'fine_ke':
                 self.ds[variable + "_log"] = xr.apply_ufunc(
                     np.log, self.ds[variable].compute(),
                     input_core_dims=[['t', 'y_c', 'x_c']],
@@ -281,7 +281,7 @@ class data_preparation:
                 self.sc.target = [variable + "_log"]
             # apply a asinh transform to eke tendency
             if variable == 'eke_tendency':
-                asinh_scale = 1e-6
+                asinh_scale = 1e-5
                 self.ds[variable + "_asinh"] = xr.apply_ufunc(
                     np.arcsinh, (self.ds[variable] / asinh_scale).compute(),
                     input_core_dims=[['t', 'y_c', 'x_c']],
