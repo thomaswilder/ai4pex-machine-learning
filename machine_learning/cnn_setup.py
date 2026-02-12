@@ -19,8 +19,11 @@ def setup_scenario(args, logger=None):
         target=args.target, 
         filters=args.filters, 
         kernels=args.kernels,
+        padding=args.padding,
         name=None,
     )
+
+    logger.info(f"Scenario setup complete: {scenario}")
 
     return scenario
 
