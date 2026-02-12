@@ -1,7 +1,31 @@
 #!/usr/bin/python3
 
+'''
+
+    Description: 
+
+'''
+
+
 import argparse
 import yaml
+
+def tuple2(k):
+    k = [tuple(map(int, k.strip('()').split(','))) \
+         for k in k.split()]
+    return k
+
+def list1(k): 
+    k = [int(i) for i in k.split()]
+    return k
+
+def list2(k):
+    k = [k]
+    return k
+
+def split1(k: str):
+    k = k.split()
+    return k
 
 def parse_args(argv=None):
 
@@ -12,8 +36,8 @@ def parse_args(argv=None):
 
     # filenames and directories
     parser.add_argument("--data_dir", type=str, help="Directory containing the preprocessed data files.")
-    parser.add_argument("--data_filenames", type=str, help="List of filenames to load the data from.")
-    parser.add_argument("--domain", type=str, default=None, help="Domain identifier for data files.")
+    parser.add_argument("--data_filenames", type=split1, help="List of filenames to load the data from.")
+    parser.add_argument("--domain", type=split1, default=None, help="Domain identifier for data files.")
     parser.add_argument("--model_dir", type=str, help="Directory to save/load the trained model.")
     parser.add_argument("--model_filename", type=str, default=None, help="Name of the model file to load.")
     parser.add_argument("--model_save_filename", type=str, default=None, help="Name of the model file to save to.")
@@ -26,12 +50,12 @@ def parse_args(argv=None):
     # #// parser.add_argument("--checkpoint_filename", type=str, default=None, help="Name of chekcpoint file - model weights.")
     
     # model features and parameters
-    parser.add_argument("--features", type=str, help="List of feature names to use for training.")
-    parser.add_argument("--target", type=str, help="Target.")
+    parser.add_argument("--features", type=split1, help="List of feature names to use for training.")
+    parser.add_argument("--target", type=list2, help="Target.")
     parser.add_argument("--epochs", type=int, default=None, help="Number of epochs to train the model.")
-    parser.add_argument("--kernels", type=str, default=None, help="Size of the convolutional kernel.")
-    parser.add_argument("--padding", type=str, default=None, help="Convolutional padding.")
-    parser.add_argument("--filters", type=str, default=None, help="Number of filters in the convolutional layers.")
+    parser.add_argument("--kernels", type=tuple2, default=None, help="Size of the convolutional kernel.")
+    parser.add_argument("--padding", type=tuple2, default=None, help="Convolutional padding.")
+    parser.add_argument("--filters", type=list1, default=None, help="Number of filters in the convolutional layers.")
     parser.add_argument("--batch_size", type=int, default=None, help="Batch size for training.")
     parser.add_argument("--k_folds", type=int, default=1, help="Number of folds for k-fold cross validation (1 = no CV).")  
     parser.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate for the optimizer. \
