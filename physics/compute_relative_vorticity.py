@@ -25,15 +25,17 @@ logger.info('Begin...')
 
 region = 'SO_JET'
 
+mode = 'geostrophic' # 'geostrophic' or 'full' velocity
 
-directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/{region}/coarsened_data/'
+
+directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/coarsened_data/'
 mask_path = [directory + f'../mesh_mask_exp4_{region}.nc']
 
 # Initial date string
-start_date_init_str = "00610101"
+start_date_init_str = "00610201"
 
 # End date string
-end_date_init_str = "00610201"
+end_date_init_str = "00730101"
 
 
 # Convert date strings to datetime objects
@@ -64,8 +66,12 @@ while current_date_init < end_date_init:
     current_date_init = next_date_init
 
     # set nemo filename using dates
-    nemo_files = [f'MINT_1d_{date_init}_*_ug_c_{region}.nc',
-                  f'MINT_1d_{date_init}_*_vg_c_{region}.nc']
+    if mode == 'geostrophic':
+        nemo_files = [f'MINT_1d_{date_init}_*_ug_cg_{region}.nc',
+                      f'MINT_1d_{date_init}_*_vg_cg_{region}.nc']
+    else:
+        nemo_files = [f'MINT_1d_{date_init}_*_uo_cg_{region}.nc',
+                      f'MINT_1d_{date_init}_*_vo_cg_{region}.nc']
     print(nemo_files)
 
     nemo_paths = [glob.glob(directory + f) for f in nemo_files]
@@ -109,35 +115,65 @@ while current_date_init < end_date_init:
     # del ds
 
     # compute relative vorticity
-    zeta = 1/(domcfg_surface.e1f*domcfg_surface.e2f) * \
-            (grid.diff(dataV.vg*domcfg_surface.e2v, 'X', **bd) \
-             - grid.diff(dataU.ug*domcfg_surface.e1u, 'Y', **bd)) \
-                * domcfg_surface.fmask
+    if mode == 'geostrophic':
+        zeta = 1/(domcfg_surface.e1f*domcfg_surface.e2f) * \
+                (grid.diff(dataV.vg*domcfg_surface.e2v, 'X', **bd) \
+                - grid.diff(dataU.ug*domcfg_surface.e1u, 'Y', **bd)) \
+                    * domcfg_surface.fmask
+    else:
+        zeta = 1/(domcfg_surface.e1f*domcfg_surface.e2f) * \
+                (grid.diff(dataV.vo*domcfg_surface.e2v, 'X', **bd) \
+                - grid.diff(dataU.uo*domcfg_surface.e1u, 'Y', **bd)) \
+                    * domcfg_surface.fmask
     
     logger.info('Relative vorticity calculated is: %s', zeta)
+
+    #! interpolation done to put on cell centre
+    # interpolate to cell centre
+    zeta_c = grid.interp(zeta, ['X', 'Y'], **bd)
 
     # zero over equator region
     # if region == 'full':
     #     zeta = xr.where(((ds_ss.gphif>2) | (ds_ss.gphif<-2)), zeta, 0.0)
 
     # create dataset
+    # ds_tmp = xr.Dataset(
+    #     data_vars={
+    #         'vor': (["y_f", "x_f", "t"], 
+    #                     zeta.values),
+    #     },
+    #     coords={
+    #         "t": (["t"], zeta.t.values,
+    #                     zeta.t.attrs),
+    #         "gphif": (["y_f", "x_f"], domcfg_surface.gphif.values, 
+    #                   {"standard_name": "Latitude", "units": "degrees_north"}),
+    #         "glamf": (["y_f", "x_f"], domcfg_surface.glamf.values, 
+    #                   {"standard_name": "Longitude","units": "degrees_east"}),
+    #     },
+    #     attrs={
+    #         "name": "NEMO dataset",
+    #         "description": "Relative vorticity from geostrophic velocities \
+    #                           -> ocean F grid variables",
+    #     },
+    # )
+
     ds_tmp = xr.Dataset(
         data_vars={
-            'vor': (["y_f", "x_f", "t"], 
-                        zeta.values),
+            'vor': (["y_c", "x_c", "t"], 
+                        zeta_c.values),
         },
         coords={
-            "t": (["t"], zeta.t.values,
-                        zeta.t.attrs),
-            "gphif": (["y_f", "x_f"], domcfg_surface.gphif.values, 
+            "t": (["t"], zeta_c.t.values,
+                        zeta_c.t.attrs),
+            "gphit": (["y_c", "x_c"], domcfg_surface.gphit.values, 
                       {"standard_name": "Latitude", "units": "degrees_north"}),
-            "glamf": (["y_f", "x_f"], domcfg_surface.glamf.values, 
+            "glamt": (["y_c", "x_c"], domcfg_surface.glamt.values, 
                       {"standard_name": "Longitude","units": "degrees_east"}),
         },
         attrs={
             "name": "NEMO dataset",
-            "description": "Relative vorticity from geostrophic velocities \
-                              -> ocean F grid variables",
+            "description": f"Relative vorticity from coarse_grained \
+                  {mode} velocities -> ocean T grid variables",
         },
     )
 
@@ -157,8 +193,11 @@ while current_date_init < end_date_init:
     # ds_tmp["time_counter_bounds"] = ref["time_counter_bounds"]
 
     # save data to netcdf
-    output_file = f'MINT_1d_{date_init}_{date_end}_vor_cg_{region}.nc'
+    if mode == 'geostrophic':
+        output_file = f'MINT_1d_{date_init}_{date_end}_vorg_cg_{region}.nc'
+    else:
+        output_file = f'MINT_1d_{date_init}_{date_end}_vor_cg_{region}.nc'
 
-    save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/{region}/'
+    save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/coarsened_data/'
 
     ds_tmp.to_netcdf(save_directory + output_file)

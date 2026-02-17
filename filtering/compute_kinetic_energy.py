@@ -25,14 +25,20 @@ logger.info('Begin...')
 
 region = 'SO_JET'
 
-directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
-mask_path = [directory + f'../../features_take2/{region}/mesh_mask_exp16_surface_{region}.nc']
+mode = 'geostrophic' # 'geostrophic' or 'full' velocity
+
+if mode == 'geostrophic':
+    directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
+    mask_path = [directory + f'mesh_mask_exp16_surface_{region}.nc']
+else:
+    directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
+    mask_path = [directory + f'../../features_take2/{region}/mesh_mask_exp16_surface_{region}.nc']
 
 # Initial date string
-start_date_init_str = "00610201"
+start_date_init_str = "00610101"
 
 # End date string
-end_date_init_str = "00730101"
+end_date_init_str = "00610201"
 
 # scale deformation radius
 ld_scaling = 3
@@ -92,8 +98,12 @@ while current_date_init < end_date_init:
     current_date_init = next_date_init
 
     # set nemo filename using dates
-    nemo_files = [f'MINT_1d_{date_init}_*_grid_U_{region}.nc',
-                  f'MINT_1d_{date_init}_*_grid_V_{region}.nc']
+    if mode == 'geostrophic':
+        nemo_files = [f'MINT_1d_{date_init}_*_ug_{region}.nc',
+                      f'MINT_1d_{date_init}_*_vg_{region}.nc']
+    else:
+        nemo_files = [f'MINT_1d_{date_init}_*_grid_U_{region}.nc',
+                      f'MINT_1d_{date_init}_*_grid_V_{region}.nc']
     print(nemo_files)
 
     nemo_paths = [glob.glob(directory + f) for f in nemo_files]
@@ -183,8 +193,12 @@ while current_date_init < end_date_init:
     # interpolate velocity to t-grid point
     # ds_tmp = xr.Dataset()
     logger.info('Interpolating velocities to t-grid')
-    uo_c = grid.interp(ds.uo.isel(z_c=0), 'X', boundary='extend').persist()
-    vo_c = grid.interp(ds.vo.isel(z_c=0), 'Y', boundary='extend').persist()
+    if mode == 'geostrophic':
+        uo_c = grid.interp(ds.ug, 'X', boundary='extend').persist()
+        vo_c = grid.interp(ds.vg, 'Y', boundary='extend').persist()
+    else:
+        uo_c = grid.interp(ds.uo.isel(z_c=0), 'X', boundary='extend').persist()
+        vo_c = grid.interp(ds.vo.isel(z_c=0), 'Y', boundary='extend').persist()
 
     # logger.info('Writing interpolated velocity to temp file')
     # ds_tmp.to_netcdf(directory + "temp_velocity_on_tgrid.nc")
@@ -243,8 +257,8 @@ while current_date_init < end_date_init:
     # create dataset for xnemo readable
     ds_eke = xr.Dataset(
         data_vars={
-            'bare_ke': (["t", "y_c", "x_c"], 
-                        bare_ke.values),
+            # 'bare_ke': (["t", "y_c", "x_c"], 
+            #             bare_ke.values),
             'coarse_ke': (["t", "y_c", "x_c"], 
                         coarse_ke.values),
             'fine_ke': (["t", "y_c", "x_c"], 
@@ -260,7 +274,7 @@ while current_date_init < end_date_init:
         },
         attrs={
             "name": "NEMO dataset",
-            "description": "Contains eddy kinetic energy -> ocean T grid variables",
+            "description": f"Contains eddy kinetic energy from {mode} component -> ocean T grid variables",
         },
     )
 
@@ -275,9 +289,12 @@ while current_date_init < end_date_init:
     # ds_eke["time_counter_bounds"] = ref["time_counter_bounds"]
 
     # save to netcdf
-    output_file = f'MINT_1d_{date_init}_{date_end}_ke_{region}.nc'
+    if mode == 'geostrophic':
+        output_file = f'MINT_1d_{date_init}_{date_end}_keg_{region}.nc'
+    else:
+        output_file = f'MINT_1d_{date_init}_{date_end}_ke_{region}.nc'
 
-    save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}//'
+    save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
     logger.info('Saving kinetic energy to: %s', save_directory + output_file)
 
     ds_eke.to_netcdf(save_directory + output_file)

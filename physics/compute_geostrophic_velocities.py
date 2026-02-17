@@ -18,9 +18,10 @@ from dateutil.relativedelta import relativedelta
 import numpy as np
 import glob
 
+region = 'SO_JET'
 
-directory = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production/OUTPUTS/'
-mask_path = ['~/Python/AI4PEX/DINO/mesh_mask_exp16.nc']
+directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
+mask_path = [directory + f'../../features_take2/{region}/mesh_mask_exp16_{region}.nc']
 
 # Initial date string
 start_date_init_str = "00610101"
@@ -57,7 +58,7 @@ while current_date_init < end_date_init:
     # current_date_end = next_date_end
 
     # set nemo filename using dates
-    nemo_files = [f'MINT_1d_{date_init}_*_grid_T.nc']
+    nemo_files = [f'MINT_1d_{date_init}_*_grid_T_{region}.nc']
     print(nemo_files)
 
     # open dataset using xnemogcm
@@ -86,34 +87,34 @@ while current_date_init < end_date_init:
     del ds
 
     # interpolate ssh to u and v points
-    zos_u = grid.interp(ds_ss.zos, 'X', boundary='fill', fill_value=0) * ds_ss.umask
-    zos_v = grid.interp(ds_ss.zos, 'Y', boundary='fill', fill_value=0) * ds_ss.vmask
+    zos_u = grid.interp(ds_ss.zos, 'X', boundary='extend') * ds_ss.umask
+    zos_v = grid.interp(ds_ss.zos, 'Y', boundary='extend') * ds_ss.vmask
 
     # set coriolis parameter to 1e-12 at equator
     ff = xr.where(((ds_ss.gphit>0.1) | (ds_ss.gphit<-0.1)), ds_ss.ff_t, 1e-12)
 
     # compute geostrophic velocities on t points
     ug = - (9.81/(ff)) * \
-            ( grid.diff(zos_v, 'Y', boundary='fill', fill_value=0) / ds_ss.e2t ) * ds_ss.tmask
+            ( grid.diff(zos_v, 'Y', boundary='extend') / ds_ss.e2t ) * ds_ss.tmask
     vg = (9.81/(ff)) * \
-            ( grid.diff(zos_u, 'X', boundary='fill', fill_value=0) / ds_ss.e1t ) * ds_ss.tmask
+            ( grid.diff(zos_u, 'X', boundary='extend') / ds_ss.e1t ) * ds_ss.tmask
 
     # put velocities back on u and v points
-    vg_v = grid.interp(vg, 'Y', boundary='fill', fill_value=0) * ds_ss.vmask
-    ug_u = grid.interp(ug, 'X', boundary='fill', fill_value=0) * ds_ss.umask
+    vg_v = grid.interp(vg, 'Y', boundary='extend') * ds_ss.vmask
+    ug_u = grid.interp(ug, 'X', boundary='extend') * ds_ss.umask
 
     # create datasets for each velocity
     ds_u = xr.Dataset(
         data_vars={
-            'ug': (["y_c", "x_f", "t"], 
+            'ug': (["y", "x", "time_counter"], 
                         ug_u.values),
         },
         coords={
-            "t": (["t"], ug_u.t.values,
+            "time_counter": (["time_counter"], ug_u.t.values,
                         ug_u.t.attrs),
-            "gphiu": (["y_c", "x_f"], ds_ss.gphiu.values, 
+            "gphiu": (["y", "x"], ds_ss.gphiu.values, 
                       {"standard_name": "Latitude", "units": "degrees_north"}),
-            "glamu": (["y_c", "x_f"], ds_ss.glamu.values, 
+            "glamu": (["y", "x"], ds_ss.glamu.values, 
                       {"standard_name": "Longitude","units": "degrees_east"}),
         },
         attrs={
@@ -125,15 +126,15 @@ while current_date_init < end_date_init:
 
     ds_v = xr.Dataset(
         data_vars={
-            'vg': (["y_f", "x_c", "t"], 
+            'vg': (["y", "x", "time_counter"], 
                         vg_v.values),
         },
         coords={
-            "t": (["t"], vg_v.t.values,
+            "time_counter": (["time_counter"], vg_v.t.values,
                         vg_v.t.attrs),
-            "gphiv": (["y_f", "x_c"], ds_ss.gphiv.values, 
+            "gphiv": (["y", "x"], ds_ss.gphiv.values, 
                       {"standard_name": "Latitude", "units": "degrees_north"}),
-            "glamv": (["y_f", "x_c"], ds_ss.glamv.values, 
+            "glamv": (["y", "x"], ds_ss.glamv.values, 
                       {"standard_name": "Longitude","units": "degrees_east"}),
         },
         attrs={
@@ -150,7 +151,7 @@ while current_date_init < end_date_init:
 
     # extract time counter bounds from original file
     ref = xr.open_dataset(directory + 
-                          f'MINT_1d_{date_init}_{date_end}_grid_T.nc')
+                          f'MINT_1d_{date_init}_{date_end}_grid_T_{region}.nc')
     
     ds_u["time_counter_bounds"] = ref["time_counter_bounds"]
     # ds_u["time_centered_bounds"] = ref["time_centered_bounds"]
@@ -158,10 +159,10 @@ while current_date_init < end_date_init:
     # ds_v["time_centered_bounds"] = ref["time_centered_bounds"]
 
     # save data to netcdf
-    output_u_file = f'MINT_1d_{date_init}_{date_end}_ug.nc'
-    output_v_file = f'MINT_1d_{date_init}_{date_end}_vg.nc'
+    output_u_file = f'MINT_1d_{date_init}_{date_end}_ug_{region}.nc'
+    output_v_file = f'MINT_1d_{date_init}_{date_end}_vg_{region}.nc'
 
-    save_directory = '/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features/'
+    save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
 
     ds_u.to_netcdf(save_directory + output_u_file)
     ds_v.to_netcdf(save_directory + output_v_file)

@@ -27,6 +27,8 @@ logger.info('Begin...')
 
 region = 'SO_JET'
 
+mode = 'geostrophic'
+
 # directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
 # mask16_path = [directory + f'../../features_take2/{region}/mesh_mask_exp16_surface_{region}.nc']
 # mask025_path = directory + f'../../features_take2/{region}/mesh_mask_exp4_{region}.nc'
@@ -35,9 +37,9 @@ directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{
 mask16_path = [directory + f'mesh_mask_exp16_{region}.nc']
 mask025_path = directory + f'mesh_mask_exp4_{region}.nc'
 
-variable = 'ug'
-variable_to_filter = 'ug'
-variable_name = 'ug'
+variable = 'keg'
+variable_to_filter = 'coarse_ke'
+variable_name = 'coarse_ke'
 
 #TODO add xnemo option to load in deformation radius
 
@@ -111,7 +113,7 @@ while current_date_init < end_date_init:
         # merge data and domcfg
         ds = xr.merge([data, domcfg])
     
-    elif variable=='ke':
+    elif variable=='ke' or variable == 'keg':
         domcfg = open_domain_cfg(files = mask16_path)
         data = xr.open_dataset(nemo_paths[0][0])
 
@@ -181,7 +183,7 @@ while current_date_init < end_date_init:
 
     bd = {'boundary': 'extend'}
     
-    if variable == 'ke':
+    if variable == 'ke' or variable == 'keg':
         if variable_to_filter == 'coarse_ke':
             ds['coarse_ke_f'] = filter_irregular_with_land.apply(
                 ds['coarse_ke'],
@@ -314,7 +316,10 @@ while current_date_init < end_date_init:
     # ds_tmp["time_counter_bounds"] = ref["time_counter_bounds"]
 
     # save data to netcdf
-    output_file = f'MINT_1d_{date_init}_{date_end}_{variable_name}_f_{region}.nc'
+    if mode == 'geostrophic':
+        output_file = f'MINT_1d_{date_init}_{date_end}_{variable_name}g_f_{region}.nc'
+    else:
+        output_file = f'MINT_1d_{date_init}_{date_end}_{variable_name}_f_{region}.nc'
 
     save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/filtered_data/'
 
