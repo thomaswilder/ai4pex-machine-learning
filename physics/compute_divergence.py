@@ -19,7 +19,7 @@ from dateutil.relativedelta import relativedelta
 region = 'SO_JET'
 
 directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/coarsened_data/'
-mask_path = [directory + f'../mesh_mask_exp16_surface_{region}.nc']
+mask_path = [directory + f'../mesh_mask_exp16_{region}.nc']
 
 # Initial date string
 start_date_init_str = "00610101"
@@ -62,13 +62,10 @@ while current_date_init < end_date_init:
 
     nemo_paths = [glob.glob(directory + f) for f in nemo_files]
 
-    # logger.info('nemo_paths are: %s', nemo_paths)
-
-    # extract date_end from nemo_paths
-    filename = nemo_paths[0][0].split('/')[-1]
-    date_end = filename.split('_')[3]
-
     nemo_files = [nemo_paths[0][0].split('/')[-1], nemo_paths[1][0].split('/')[-1]]
+
+    # open dataset using xnemogcm
+    nemo_paths = [directory + f for f in nemo_files]
 
     dataU = xr.open_dataset(nemo_paths[0])
     dataV = xr.open_dataset(nemo_paths[1])
