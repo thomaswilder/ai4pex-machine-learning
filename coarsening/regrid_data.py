@@ -56,20 +56,20 @@ def create_regridded_dataset(ds_regrid, variable):
 
 region = 'SO_JET'
 
-variable = 'ke'
+variable = 'coarse_ke'
 
-directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
-mask_path = [directory + f'mesh_mask_exp16_{region}.nc']
+directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/filtered_data/'
+mask_path = [directory + f'../mesh_mask_exp16_{region}.nc']
 
-weights_fn = directory + f'weights_{region}.nc'
+weights_fn = directory + f'../weights_{region}.nc'
 
 # -------------------------------------------- #
 
 # load in input and target grid
-array = np.load(directory + f'{region}_input_grid_16.npy', allow_pickle=True)
+array = np.load(directory + f'../{region}_input_grid_16.npy', allow_pickle=True)
 input_grid = array.item()
 
-array = np.load(directory + f'{region}_target_grid_025.npy', allow_pickle=True)
+array = np.load(directory + f'../{region}_target_grid_025.npy', allow_pickle=True)
 target_grid = array.item()
 
 # load in regridder
@@ -81,10 +81,10 @@ regridder = xe.Regridder(input_grid,
 # -------------------------------------------- #
 
 # Initial date string
-start_date_init_str = "00610201"
+start_date_init_str = "00610101"
 
 # End date string
-end_date_init_str = "00730101"
+end_date_init_str = "00610201"
 
 # Convert date strings to datetime objects
 start_date_init = datetime.strptime(start_date_init_str, "%Y%m%d")
@@ -112,10 +112,10 @@ while current_date_init < end_date_init:
     current_date_init = next_date_init
 
     # set nemo filename using dates
-    if variable != 'ke':
-        nemo_files = [f'MINT_1d_{date_init}_*_{variable}_f_{region}.nc']
-    else:
-        nemo_files = [f'MINT_1d_{date_init}_*_{variable}_{region}.nc']
+    # if variable != 'coarse_ke' or variable != 'fine_ke':
+    nemo_files = [f'MINT_1d_{date_init}_*_{variable}_f_{region}.nc']
+    # else:
+    #     nemo_files = [f'MINT_1d_{date_init}_*_{variable}_{region}.nc']
 
     nemo_paths = [glob.glob(directory + f) for f in nemo_files]
 
@@ -157,11 +157,12 @@ while current_date_init < end_date_init:
 
     # perform regridding
     ds_tmp = xr.Dataset()
-    if variable != 'ke':
+    if variable != 'coarse_ke' or variable != 'fine_ke':
         ds_tmp[variable] = regridder(data[variable])
-    else:
-        ds_tmp['fine_ke'] = regridder(data['fine_ke'])
+    elif variable == 'coarse_ke':
         ds_tmp['coarse_ke'] = regridder(data['coarse_ke'])
+    elif variable == 'fine_ke':
+        ds_tmp['fine_ke'] = regridder(data['fine_ke'])
 
     # Rename coordinates back to gphit and glamt
     if variable == 'uo':
@@ -180,7 +181,7 @@ while current_date_init < end_date_init:
     elif variable == 'vobn2':
         ds = ds_tmp
         ds = ds.rename({'y': 'y_c', 'x': 'x_c'})
-    elif variable == 'ke':
+    elif variable == 'coarse_ke' or:
         ds = ds_tmp
         ds = ds.rename({'y': 'y_c', 'x': 'x_c'})
     else:
@@ -189,10 +190,10 @@ while current_date_init < end_date_init:
     # save data to netcdf
     output_file = f'MINT_1d_{date_init}_{date_end}_{variable}_cg_{region}.nc'
 
-    if variable != 'ke':
-        save_directory = directory + '../coarsened_data/'
-    else:
-        save_directory = directory + 'coarsened_data/'
+    # if variable != 'ke':
+    #     save_directory = directory + '../coarsened_data/'
+    # else:
+    save_directory = directory + 'coarsened_data/'
 
     ds.to_netcdf(save_directory + output_file)
 
