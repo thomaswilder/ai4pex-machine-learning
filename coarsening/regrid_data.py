@@ -181,7 +181,7 @@ while current_date_init < end_date_init:
     elif variable == 'vobn2':
         ds = ds_tmp
         ds = ds.rename({'y': 'y_c', 'x': 'x_c'})
-    elif variable == 'coarse_ke' or:
+    elif variable == 'coarse_ke' or variable == 'fine_ke':
         ds = ds_tmp
         ds = ds.rename({'y': 'y_c', 'x': 'x_c'})
     else:
