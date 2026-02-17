@@ -35,14 +35,14 @@ directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{
 mask16_path = [directory + f'mesh_mask_exp16_{region}.nc']
 mask025_path = directory + f'mesh_mask_exp4_{region}.nc'
 
-variable = 'bn2'
-variable_to_filter = 'vobn2'
-variable_name = 'vobn2'
+variable = 'ug'
+variable_to_filter = 'ug'
+variable_name = 'ug'
 
 #TODO add xnemo option to load in deformation radius
 
 # open spatial filter
-kappa = xr.open_dataset('/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/kappa16.nc')
+kappa = xr.open_dataset(f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/kappa16_{region}.nc')
 
 # rename dimensions for gcm-filters
 kappa = kappa.rename({'y': 'y_c', 'x': 'x_c'})
@@ -55,10 +55,10 @@ max_grid_scale = grid_scale.max()
 # -------------------------------------------- #
 
 # Initial date string
-start_date_init_str = "00690401"
+start_date_init_str = "00610101"
 
 # End date string
-end_date_init_str = "00730101"
+end_date_init_str = "00610201"
 
 
 # Convert date strings to datetime objects
@@ -107,6 +107,13 @@ while current_date_init < end_date_init:
                             'y': 'y_c',
                             'deptht': 'z_c'})
         data.coords['z_c'] = domcfg.coords['z_c']
+
+        # merge data and domcfg
+        ds = xr.merge([data, domcfg])
+    
+    elif variable=='ke':
+        domcfg = open_domain_cfg(files = mask16_path)
+        data = xr.open_dataset(nemo_paths[0][0])
 
         # merge data and domcfg
         ds = xr.merge([data, domcfg])
@@ -176,17 +183,23 @@ while current_date_init < end_date_init:
     
     if variable == 'ke':
         if variable_to_filter == 'coarse_ke':
-            ds['mke_f'] = filter_irregular_with_land.apply(
+            ds['coarse_ke_f'] = filter_irregular_with_land.apply(
                 ds['coarse_ke'],
                 dims=['y_c', 'x_c'])
 
         elif variable_to_filter == 'fine_ke':
-            ds['eke_f'] = filter_irregular_with_land.apply(
+            ds['fine_ke_f'] = filter_irregular_with_land.apply(
                 ds['fine_ke'],
                 dims=['y_c', 'x_c'])
         # variable = 'mke'
     elif variable == 'grid_U':
         ds[f'{variable_name}_c'] = grid.interp(ds[variable_name].isel(z_c=0), ['X'], **bd)
+        ds[f'{variable_name}_f'] = filter_irregular_with_land.apply(ds[f'{variable_name}_c'],
+                                                           dims=['y_c', 'x_c'])
+        ds[f'{variable_name}_fc'] = grid.interp(ds[f'{variable_name}_f'], ['X'], **bd)
+
+    elif variable == 'ug':
+        ds[f'{variable_name}_c'] = grid.interp(ds[variable_name], ['X'], **bd)
         ds[f'{variable_name}_f'] = filter_irregular_with_land.apply(ds[f'{variable_name}_c'],
                                                            dims=['y_c', 'x_c'])
         ds[f'{variable_name}_fc'] = grid.interp(ds[f'{variable_name}_f'], ['X'], **bd)
@@ -197,12 +210,18 @@ while current_date_init < end_date_init:
                                                            dims=['y_c', 'x_c'])
         ds[f'{variable_name}_fc'] = grid.interp(ds[f'{variable_name}_f'], ['Y'], **bd)
 
+    elif variable == 'vg':
+        ds[f'{variable_name}_c'] = grid.interp(ds[variable_name], ['Y'], **bd)
+        ds[f'{variable_name}_f'] = filter_irregular_with_land.apply(ds[f'{variable_name}_c'],
+                                                           dims=['y_c', 'x_c'])
+        ds[f'{variable_name}_fc'] = grid.interp(ds[f'{variable_name}_f'], ['Y'], **bd)
+
     else:
         ds[f'{variable_name}_f'] = filter_irregular_with_land.apply(ds[variable_name],
                                                            dims=['y_c', 'x_c'])
 
     # create dataset
-    if variable =='grid_U':
+    if variable =='grid_U' or variable == 'ug':
         ds_tmp = xr.Dataset(
             data_vars={
                 f'{variable_name}': (["t", "y_c", "x_f"],
@@ -222,7 +241,7 @@ while current_date_init < end_date_init:
                                 -> ocean U grid variables",
             },
     )
-    elif variable =='grid_V':
+    elif variable =='grid_V' or variable == 'vg':
         ds_tmp = xr.Dataset(
             data_vars={
                 f'{variable_name}': (["t", "y_f", "x_c"], 
