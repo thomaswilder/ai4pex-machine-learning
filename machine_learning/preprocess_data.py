@@ -68,6 +68,7 @@ def open_and_process_data(scenario, directory, filenames, domain):
         'SP': (slice(2, 37), slice(15, 50)),
         'IO': (slice(2, 37), slice(15, 50)),
         'SO_JET': (slice(3, 43), slice(7, 47)),
+        'SO_EAST': (slice(10, 50), slice(10, 50)),
         }
     
     for region in domain:
@@ -118,6 +119,7 @@ def open_and_combine_data(scenario, directory, filenames, mask_fn, domain):
         'SP': (slice(2, 37), slice(15, 50)),
         'IO': (slice(2, 37), slice(15, 50)),
         'SO_JET': (slice(3, 43), slice(7, 47)),
+        'SO_EAST': (slice(10, 50), slice(10, 50)),
         }
     
     for region in domain:
@@ -226,7 +228,7 @@ class data_preparation:
     def transform_input(self):
         for variable in self.sc.input_var:
             # if variable=="coarse_ke_f" or variable=="slope":
-            if variable == 'coarse_ke' or variable == 'fine_ke_shift':
+            if variable == 'coarse_ke' or variable == 'coarse_ke_shift' or variable == 'fine_ke_shift':
                 self.ds[variable + "_log"] = xr.apply_ufunc(
                     np.log, self.ds[variable].compute(),
                     input_core_dims=[['t', 'y_c', 'x_c']],
