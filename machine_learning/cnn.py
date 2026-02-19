@@ -105,6 +105,23 @@ class ReplicationPadding2D(keras.layers.Layer):
                                      [padding_width, padding_width], 
                                      [0,0] ], 
                                      'SYMMETRIC')
+    
+@keras.saving.register_keras_serializable(package="cnn", name="MSESSIMLoss")
+class MSESSIMLoss(keras.losses.Loss):
+    '''
+    Custom loss function that combines MSE and SSIM losses.
+    '''
+    def __init__(self, alpha=0.5, beta=0.5, **kwargs):
+        super(MSESSIMLoss, self).__init__(**kwargs)
+        self.alpha = alpha
+        self.beta = beta
+
+    def call(self, y_true, y_pred):
+        mse_loss = ops.mean(ops.square(y_true - y_pred))
+        max_value = tf.reduce_max(tf.maximum(tf.reduce_max(y_true), tf.reduce_max(y_pred))) \
+                    - tf.reduce_min(tf.minimum(tf.reduce_min(y_true), tf.reduce_min(y_pred)))
+        ssim_loss = 1 - tf.image.ssim(y_true, y_pred, max_val=max_value)
+        return self.alpha * mse_loss + (1 - self.beta) * ssim_loss
 
 @keras.saving.register_keras_serializable(package="cnn", name="MaskedMSELoss")
 class MaskedMSELoss(keras.losses.Loss):

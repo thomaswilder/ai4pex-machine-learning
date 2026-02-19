@@ -265,7 +265,8 @@ def train_model(scenario, ds_training, ds_validation,
             use_ema=opt_dic["use_ema"], 
             ema_momentum=opt_dic["ema_momentum"],
             ),
-            loss=cnn.MaskedMSELoss(mask=mask), # if mask is None, no masking is applied
+            # loss=cnn.MaskedMSELoss(mask=mask), # if mask is None, no masking is applied
+            loss=cnn.MSESSIMLoss(alpha=0.5, beta=0.5),
             run_eagerly=False,
         ) # 
 
@@ -650,7 +651,7 @@ if __name__ == "__main__": # executed when run as a script, not when imported as
         # ----------------------------
         n_test = 359     # one less due to eke shift
         n_val  = 360    # 60 days before test
-        train_stride = 1  # every day
+        train_stride = 4  # every 2nd day
 
         nt = ds.sizes["t"]
 
@@ -659,7 +660,7 @@ if __name__ == "__main__": # executed when run as a script, not when imported as
         # ----------------------------
         test_idx = np.arange(nt - n_test, nt)
         val_idx  = np.arange(nt - n_test - n_val, nt - n_test)
-        train_idx_full = np.arange(1, nt - n_test - n_val) # start from day 2 as tendency starts from day 2
+        train_idx_full = np.arange(1000, nt - n_test - n_val) # start from day 1000 as tendency starts from day 2
 
         # ----------------------------
         # 4. Subsample training every 1st day
