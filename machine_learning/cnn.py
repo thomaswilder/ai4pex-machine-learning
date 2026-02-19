@@ -118,8 +118,7 @@ class MSESSIMLoss(keras.losses.Loss):
 
     def call(self, y_true, y_pred):
         mse_loss = ops.mean(ops.square(y_true - y_pred))
-        max_value = tf.reduce_max(tf.maximum(tf.reduce_max(y_true), tf.reduce_max(y_pred))) \
-                    - tf.reduce_min(tf.minimum(tf.reduce_min(y_true), tf.reduce_min(y_pred)))
+        max_value = ops.abs(tf.reduce_max(y_true) - tf.reduce_min(y_true))
         ssim_loss = 1 - tf.image.ssim(y_true, y_pred, max_val=max_value)
         return self.alpha * mse_loss + (1 - self.beta) * ssim_loss
 
@@ -149,7 +148,7 @@ class MaskedMSELoss(keras.losses.Loss):
         y_pred = y_pred * self.mask if self.mask is not None else y_pred
 
         if self.mask is not None:
-            mse = ops.sum(ops.square(y_true - y_pred)) / ops.sum(self.mask)
+            mse = ops.mean(ops.square(y_true - y_pred)) / ops.sum(self.mask)
             # print("ops.square(y_true - y_pred):", ops.square(y_true - y_pred))
             # print("ops.sum(self.mask):", ops.sum(self.mask))
             # print("Masked MSE:", mse)
