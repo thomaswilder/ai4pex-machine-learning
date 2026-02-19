@@ -148,7 +148,7 @@ class MaskedMSELoss(keras.losses.Loss):
         y_pred = y_pred * self.mask if self.mask is not None else y_pred
 
         if self.mask is not None:
-            mse = ops.mean(ops.square(y_true - y_pred)) / ops.sum(self.mask)
+            mse = ops.sum(ops.square(y_true - y_pred)) / ops.sum(self.mask)
             # print("ops.square(y_true - y_pred):", ops.square(y_true - y_pred))
             # print("ops.sum(self.mask):", ops.sum(self.mask))
             # print("Masked MSE:", mse)
