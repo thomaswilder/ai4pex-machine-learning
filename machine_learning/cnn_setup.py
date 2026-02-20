@@ -132,7 +132,7 @@ def get_data_shuffle(ds, args, logger):
             )
 
     # get the total number of samples in the dataset
-    n_samples = ds.samples.size
+    n_samples = ds.sample.size
     idx = np.arange(n_samples)
 
     # create a random number generator with the specified seed
