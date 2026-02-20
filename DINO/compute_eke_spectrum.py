@@ -86,6 +86,7 @@ dyw = dyw.swap_dims({"x_f": "x_c"})
 dxs = dxs.swap_dims({"y_f": "y_c"})
 dys = dys.swap_dims({"y_f": "y_c"})
 area = ds.e1t*ds.e2t
+logger.info('area is: %s', area)
 
 # find minimum grid spacing
 dx_min = min(ds.e1t.where(ds.tmask.isel(z_c=0)).min(), 
@@ -117,7 +118,6 @@ ceke = np.zeros((30, np.size(L)))
 
 # set a loop through lengthscales (in m)
 for i in range(np.size(L)):
-# for i in range(1):
 
     logger.info(f'Calculating ceke at lengthscale {L[i]}')
 
@@ -165,6 +165,8 @@ for i in range(np.size(L)):
         
     elif mode == 'exp16':
         # cumulative eke
+        logger.info('ds_tmp is: %s', ds_tmp)
+        ds_tmp = ds_tmp.isel(z_c=0)  # select surface and first time step
         ceke[:, i] = (ds_tmp['coarse_ke']*area).sum(dim=['x_c', 'y_c']) \
                         / area.sum()
 
