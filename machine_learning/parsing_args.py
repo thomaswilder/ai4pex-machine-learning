@@ -42,13 +42,13 @@ def parse_args(argv=None):
     parser.add_argument("--model_filename", type=str, default=None, help="Name of the model file to load.")
     parser.add_argument("--model_save_filename", type=str, default=None, help="Name of the model file to save to.")
 
-    # data slicing #! hard coded for now
-    # parser.add_argument("--x_c_slice", type=str, default="3:37", help="Slice for x_c dimension, e.g. '3:37'")
-    # parser.add_argument("--y_c_slice", type=str, default="0:34", help="Slice for y_c dimension, e.g. '0:34'")
-    # parser.add_argument("--t_slice", type=str, default="0:300", help="Slice for t dimension, e.g. '0:300'") #! not needed
-    # #// parser.add_argument("--checkpoint_dir", type=str, default=None, help="Directory to save/load model checkpoints.")
-    # #// parser.add_argument("--checkpoint_filename", type=str, default=None, help="Name of chekcpoint file - model weights.")
-    
+    # data slicing
+    parser.add_argument("--train_ratio", type=float, default=None, help="Ratio of data to use for training.")
+    parser.add_argument("--val_ratio", type=float, default=None, help="Ratio of data to use for validation.")
+    parser.add_argument("--test_ratio", type=float, default=None, help="Ratio of data to use for testing.")
+    parser.add_argument("--train_stride", type=int, default=None, help="Stride to use when sampling the training data.")
+    parser.add_argument("--shuffle_seed", type=int, default=None, help="Random seed for shuffling the data. Omit for no shuffling.")
+
     # model features and parameters
     parser.add_argument("--features", type=split1, help="List of feature names to use for training.")
     parser.add_argument("--target", type=list2, help="Target.")
@@ -89,15 +89,28 @@ def parse_args(argv=None):
     # print("Remaining args:", remaining)
 
     # load in arguments from yaml config file
-    cfg = {}
+    cfg_nested = {}
     if pre_args.config:
-        cfg = yaml.safe_load(open(pre_args.config, 'r'))
+        cfg_nested = yaml.safe_load(open(pre_args.config, 'r'))
         
-        mode = cfg.pop("mode")
+        mode = cfg_nested.pop("mode")
         if mode == "train":
-            cfg["train"] = True
+            cfg_nested["train"] = True
         else:
             raise ValueError(f"No other modes supported yet: {mode}")
+        
+        # retrieve the nested config values
+        cfg = {}
+        for parent_keys, parent_values in cfg_nested.items():
+            # print(parent_values)
+            if isinstance(parent_values, dict):
+                # print(parent_values)
+                for child_key, child_values in parent_values.items():
+                    # print(child_key, child_values)
+                    cfg[child_key] = child_values
+            #         # print(f"{child_key}")
+            else:
+                cfg[parent_keys] = parent_values
         
         # override arguments from yaml config file with command line arguments (if provided)
         for k, v in cfg.items():

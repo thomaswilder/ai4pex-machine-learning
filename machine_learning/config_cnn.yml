@@ -4,41 +4,44 @@
 mode: train
 
 domain: "SO_JET"
-
 data_dir: "/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{domain}/coarsened_data/"
 model_dir: "/home/users/twilder/Python/AI4PEX/machine_learning/training/"
 
-data_filenames: >
-  MINT_1d_0061-0072_sa_cg_{domain}.nc
-  MINT_1d_0061-0072_vor_cg_{domain}_mod.nc
-  MINT_1d_0061-0072_ke_cg_{domain}_with_shifted.nc
-  mesh_mask_exp4_{domain}_xnemo.nc
+data:
+  data_filenames: >
+    MINT_1d_0061-0072_sa_cg_{domain}.nc
+    MINT_1d_0061-0072_vor_cg_{domain}_mod.nc
+    MINT_1d_0061-0072_ke_cg_{domain}_with_shifted.nc
+    mesh_mask_exp4_{domain}_xnemo.nc
+  features: "coarse_ke vor sa"
+  target: "fine_ke"
 
-features: "coarse_ke vor sa"
-target: "fine_ke"
+data_split:
+  train_ratio: 0.834
+  val_ratio: 0.083
+  test_ratio: 0.083
+  train_stride: 5
+  shuffle_seed: 42 # just use any random number to fix the shuffle order
 
-train_ratio: 0.834
-val_ratio: 0.083
-test_ratio: 0.083
-train_stride: 5
+architecture:
+  filters: "128 64 32 16 8 1"
+  kernels: "(5,5) (5,5) (3,3) (3,3) (3,3) (1,1)"
+  padding: "(2,2) (2,2) (1,1) (1,1) (1,1) (0,0)"
 
-shuffle_seed: 42 # just use any random number to fix the shuffle order
+training:
+  batch_size: 15
+  epochs: 100
+  k_folds: 1
+  learning_rate: 0.001
+  dropout_rate: 0.2
+  use_learning_rate_scheduler: false
+  pickup: false
 
-filters: "128 64 32 16 8 1"
-kernels: "(5,5) (5,5) (3,3) (3,3) (3,3) (1,1)"
-padding: "(2,2) (2,2) (1,1) (1,1) (1,1) (0,0)"
+normalisation:
+  local_norm: true
+  global_norm: false
 
-batch_size: 15
-epochs: 100
-k_folds: 1
-learning_rate: 0.001
-dropout_rate: 0.2
-use_learning_rate_scheduler: false
-pickup: false
-
-local_norm: true
-global_norm: false
-
-verbose: false
-verbose_output_filename: "./logs/verbose_output.log"
-tensboard_log_dir: "./logs/fit/"
+logging:
+  verbose: true
+  verbose_output_filename: "./logs/verbose_output.log"
+  tensboard_log_dir: "./logs/fit/"

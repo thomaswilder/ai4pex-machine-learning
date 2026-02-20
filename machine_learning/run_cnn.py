@@ -8,7 +8,9 @@
 
 
 from parsing_args import parse_args
-from cnn_setup import setup_scenario, get_data, get_data_split
+from cnn_setup import setup_scenario, \
+      get_data, get_data_split, \
+      get_data_shuffle
 import logging
 
 
@@ -41,3 +43,7 @@ if __name__ == "__main__":
 
     # get the data splits for training, validation, and testing
     ds_train, ds_val = get_data_split(ds, args, logger)
+
+    # shuffle the training data
+    ds_train_shuffled = get_data_shuffle(ds_train, args, logger)
+
