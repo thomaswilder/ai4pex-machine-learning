@@ -101,20 +101,52 @@ def get_data_split(ds, args, logger):
     # get the data splits and return
     if args.train:
         ds_train = ds.isel(t=train_idx)
+        ds_train_flat = ds_train.stack(sample=("r", "t"))
         ds_val   = ds.isel(t=val_idx)
+        ds_val_flat = ds_val.stack(sample=("r", "t"))   
         logger.info(
-            f"Datasets split complete for training. Train set: {ds_train}, Val set: {ds_val}"
+            f"Datasets split complete for training. Train set: {ds_train_flat}, Val set: {ds_val_flat}"
         )
-        return ds_train, ds_val
+        return ds_train_flat, ds_val_flat
     else:
         ds_val   = ds.isel(t=val_idx)
+        ds_val_flat = ds_val.stack(sample=("r", "t"))
         ds_test  = ds.isel(t=test_idx)
+        ds_test_flat = ds_test.stack(sample=("r", "t"))
         logger.info(
-            f"Datasets split complete. Val set: {ds_val}, Test set: {ds_test}"
+            f"Datasets split complete. Val set: {ds_val_flat}, Test set: {ds_test_flat}"
         )
-        return ds_val, ds_test
+        return ds_val_flat, ds_test_flat
 
 def get_data_shuffle(ds, args, logger):
-    
-    
+
+    if logger and args.verbose:
+        if args.shuffle_seed is not None:
+            logger.info(
+                f"Shuffling data with seed: {args.shuffle_seed}.\
+                      Fixed shuffling."
+            )
+        else:
+            logger.info(
+                f"Shuffling data with no seed. Random shuffling."
+            )
+
+    # get the total number of samples in the dataset
+    n_samples = ds.samples.size
+    idx = np.arange(n_samples)
+
+    # create a random number generator with the specified seed
+    rng = np.random.default_rng(args.shuffle_seed)
+
+    # generate a random permutation of the sample indices
+    rng.shuffle(idx)
+
+    # shuffle the dataset across samples using the shuffled indices
+    ds_shuffled = ds.isel(sample=idx)
+
+    logger.info(
+        f"Data shuffling complete. Shuffled dataset: {ds_shuffled}"
+    )
+
+    return ds_shuffled
     
