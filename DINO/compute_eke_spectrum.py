@@ -47,8 +47,8 @@ if mode == "exp4":
     nemo_files = [f"MINT_1d_00610101_00610130_uo_cg_{region}.nc",
                   f"MINT_1d_00610101_00610130_vo_cg_{region}.nc"]
 elif mode == "exp16":
-    nemo_files = [f"../../production_take2/{region}/MINT_1d_00610101_00610130_grid_U_{region}.nc",
-                  f"../../production_take2/{region}/MINT_1d_00610101_00610130_grid_V_{region}.nc"]
+    nemo_files = [f"../../../production_take2/{region}/MINT_1d_00610101_00610130_grid_U_{region}.nc",
+                  f"../../../production_take2/{region}/MINT_1d_00610101_00610130_grid_V_{region}.nc"]
 
 #     # open dataset using xnemogcm
 nemo_paths = [directory + f for f in nemo_files]
