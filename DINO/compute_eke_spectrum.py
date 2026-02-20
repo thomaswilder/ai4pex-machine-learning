@@ -40,13 +40,14 @@ mode = 'exp16'
 region = 'SO_JET'
 
 directory=f"/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/coarsened_data/"
-mask_file=f"../mesh_mask_{mode}_{region}.nc"
 
 # set nemo filename using dates
 if mode == "exp4":
+    mask_file=f"../mesh_mask_{mode}_{region}.nc"
     nemo_files = [f"MINT_1d_00610101_00610130_uo_cg_{region}.nc",
                   f"MINT_1d_00610101_00610130_vo_cg_{region}.nc"]
 elif mode == "exp16":
+    mask_file=f"../mesh_mask_{mode}_surface_{region}.nc"
     nemo_files = [f"../../../production_take2/{region}/MINT_1d_00610101_00610130_grid_U_{region}.nc",
                   f"../../../production_take2/{region}/MINT_1d_00610101_00610130_grid_V_{region}.nc"]
 
