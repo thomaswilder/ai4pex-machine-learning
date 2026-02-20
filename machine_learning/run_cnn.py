@@ -28,11 +28,11 @@ if __name__ == "__main__":
                 filemode='w'
     )
 
-    # get the scenario for the CNN model
-    scenario = setup_scenario(args, logger)
+    # # get the scenario for the CNN model
+    # scenario = setup_scenario(args, logger)
 
-    # get the data for the scenario
-    #! only using local normalisation for now
-    ds, sc = get_data(scenario, args, logger)
+    # # get the data for the scenario
+    # #! only using local normalisation for now
+    # ds, sc = get_data(scenario, args, logger)
 
     print("hey")

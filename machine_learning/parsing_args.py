@@ -127,4 +127,27 @@ def parse_args(argv=None):
     args = parser.parse_args(remaining)
     # args.config = pre_args.config
 
+    # check if any required arguments are missing
+    required_args = [
+        'data_dir',
+        'data_filenames',
+        'domain',
+        'model_dir',
+        'features',
+        'target',
+        'epochs',
+        'batch_size',
+        'filters',
+        'kernels',
+        'padding',
+    ]
+
+    missing_args = [arg for arg in required_args if getattr(args, arg) is None]
+    
+    if missing_args:
+        parser.error(f"Missing required arguments: {', '.join(missing_args)}")
+
+    if args.local_norm is None and args.global_norm is None:
+        parser.error("Must specify either local_norm or global_norm.")
+
     return args
