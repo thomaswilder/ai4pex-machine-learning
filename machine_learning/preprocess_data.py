@@ -33,7 +33,11 @@ def slice_data(ds, x_slice, y_slice):
     return ds_tmp
 
 
-def open_and_process_data(scenario, directory, filenames, domain):
+def open_and_process_data(scenario, 
+                          directory, 
+                          filenames, 
+                          domain, 
+                          norm_stats=None):
     '''
         Opens and preprocesses the data by feeding in directory and filenames
             into the preprocessing step.
@@ -55,6 +59,7 @@ def open_and_process_data(scenario, directory, filenames, domain):
                                     directory=directory_region, 
                                     filenames=fnames_region,
                                     parallel=False,
+                                    norm_stats=norm_stats
                                     )
         ds[region] = processor()
         # print(ds[region])
@@ -167,7 +172,8 @@ class data_preparation:
     '''
     def __init__(self, sc, dataset=None, mask=None,
                  directory=None, filenames=None, 
-                 chunks=None, parallel=False,):
+                 chunks=None, parallel=False,
+                 norm_stats=None,):
         '''
             If parallel is True, then set the chunks.
         '''
@@ -175,6 +181,7 @@ class data_preparation:
         self.sc = sc
         self.chunks = chunks
         self.parallel = parallel
+        self.norm_stats = norm_stats
 
         # --- Handle input mode ---
         if dataset is not None:
@@ -267,17 +274,26 @@ class data_preparation:
         else:
             cell_area = self.mask.e1t*self.mask.e2t
         for variable in (self.sc.input_var): 
-            #TODO 
-            mean = (
-                (self.ds[variable]*cell_area).sum(('t', 'y_c', 'x_c')) /
-                ((cell_area).sum(('y_c', 'x_c'))*len(self.ds['t']))
-                .mean(('r'))
-                )
-            std = np.sqrt(
-                (cell_area * ( self.ds[variable] -  mean)**2 )
-                    .sum(('r', 't', 'x_c', 'y_c'))
-                    / ( cell_area.sum(('r', 'y_c', 'x_c'))*len(self.ds['t']) )
+            if self.norm_stats is not None:
+                # dictionary format
+                mean = self.norm_stats[variable]['mean']
+                std = self.norm_stats[variable]['std']
+            else:
+                mean = (
+                    (self.ds[variable]*cell_area).sum(('t', 'y_c', 'x_c')) /
+                    ((cell_area).sum(('y_c', 'x_c'))*len(self.ds['t']))
+                    .mean(('r'))
                     )
+                std = np.sqrt(
+                    (cell_area * ( self.ds[variable] -  mean)**2 )
+                        .sum(('r', 't', 'x_c', 'y_c'))
+                        / ( cell_area.sum(('r', 'y_c', 'x_c'))*len(self.ds['t']) )
+                        )
+
+                # store mean and std
+                self.ds[f'{variable}_norm_mean'] = mean
+                self.ds[f'{variable}_norm_std'] = std
+
             # normalize the data
             self.ds[variable] = (( self.ds[variable] - mean ) / std).compute()
             self.ds[variable] = self.ds[variable].fillna(0)
