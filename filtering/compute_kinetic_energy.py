@@ -25,20 +25,25 @@ logger.info('Begin...')
 
 region = 'SO_JET'
 
-mode = 'geostrophic' # 'geostrophic' or 'full' velocity
+mode = 'non_geostrophic' # 'geostrophic' or 'full' velocity
+variable = 'mke' # eke uses full field and mke uses cg field
 
 if mode == 'geostrophic':
     directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
     mask_path = [directory + f'mesh_mask_exp16_surface_{region}.nc']
 else:
-    directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
-    mask_path = [directory + f'../../features_take2/{region}/mesh_mask_exp16_surface_{region}.nc']
+    if variable == 'eke':
+        directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
+        mask_path = [directory + f'../../features_take2/{region}/mesh_mask_exp16_surface_{region}.nc']
+    elif variable == 'mke':
+        directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/coarsened_data/'
+        mask_path = [directory + f'../mesh_mask_exp4_surface_{region}.nc']
 
 # Initial date string
-start_date_init_str = "00610101"
+start_date_init_str = "00610201"
 
 # End date string
-end_date_init_str = "00610201"
+end_date_init_str = "00730101"
 
 # scale deformation radius
 ld_scaling = 3
@@ -47,8 +52,12 @@ ld_scaling = 3
 # -------------------------------------------- #
 # get max deformation radius in metres
 #TODO need to time average Ld and load this in
-directory_ld = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
-ld = xr.open_dataset(directory_ld + f'MINT_1d_00610101_00721230_Ld_{region}.nc')
+if variable == 'eke':
+    directory_ld = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
+    ld = xr.open_dataset(directory_ld + f'MINT_1d_00610101_00721230_Ld_{region}.nc')
+elif variable == 'mke':
+    directory_ld = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/coarsened_data/'
+    ld = xr.open_dataset(directory_ld + f'MINT_1d_00610101_00721230_Ld_cg_{region}.nc')
 
 # #! temporary until Ld is complete
 # ld_mean = ld.Ld.mean(dim='time_counter', skipna=True)
@@ -102,8 +111,12 @@ while current_date_init < end_date_init:
         nemo_files = [f'MINT_1d_{date_init}_*_ug_{region}.nc',
                       f'MINT_1d_{date_init}_*_vg_{region}.nc']
     else:
-        nemo_files = [f'MINT_1d_{date_init}_*_grid_U_{region}.nc',
-                      f'MINT_1d_{date_init}_*_grid_V_{region}.nc']
+        if variable == 'eke':
+            nemo_files = [f'MINT_1d_{date_init}_*_grid_U_{region}.nc',
+                          f'MINT_1d_{date_init}_*_grid_V_{region}.nc']
+        elif variable == 'mke':
+            nemo_files = [f'MINT_1d_{date_init}_*_uo_cg_{region}.nc',
+                          f'MINT_1d_{date_init}_*_vo_cg_{region}.nc']
     print(nemo_files)
 
     nemo_paths = [glob.glob(directory + f) for f in nemo_files]
@@ -116,10 +129,21 @@ while current_date_init < end_date_init:
 
     nemo_files = [nemo_paths[0][0].split('/')[-1], nemo_paths[1][0].split('/')[-1]]
 
+    logger.info('nemo_files is: %s', nemo_files)
+
     # open dataset using xnemogcm
-    nemo_paths = [directory + f for f in nemo_files]
-    ds = open_nemo_and_domain_cfg(nemo_files=nemo_paths,
-                                  domcfg_files=mask_path)
+    if variable == 'eke':
+        nemo_paths = [directory + f for f in nemo_files]
+        ds = open_nemo_and_domain_cfg(nemo_files=nemo_paths,
+                                    domcfg_files=mask_path)
+        
+    elif variable == 'mke':
+        domcfg = open_domain_cfg(files = mask_path)
+        dataU = xr.open_dataset(nemo_paths[0][0])
+        dataV = xr.open_dataset(nemo_paths[1][0])
+
+        ds = xr.merge([domcfg, dataU], compat='override')
+        ds = xr.merge([ds, dataV], compat='override')
     
     logger.info('Dataset is: %s', ds)
 
@@ -197,8 +221,12 @@ while current_date_init < end_date_init:
         uo_c = grid.interp(ds.ug, 'X', boundary='extend').persist()
         vo_c = grid.interp(ds.vg, 'Y', boundary='extend').persist()
     else:
-        uo_c = grid.interp(ds.uo.isel(z_c=0), 'X', boundary='extend').persist()
-        vo_c = grid.interp(ds.vo.isel(z_c=0), 'Y', boundary='extend').persist()
+        if variable == 'eke':
+            uo_c = grid.interp(ds.uo.isel(z_c=0), 'X', boundary='extend').persist()
+            vo_c = grid.interp(ds.vo.isel(z_c=0), 'Y', boundary='extend').persist()
+        elif variable == 'mke':
+            uo_c = grid.interp(ds.uo, 'X', boundary='extend').persist()
+            vo_c = grid.interp(ds.vo, 'Y', boundary='extend').persist()
 
     # logger.info('Writing interpolated velocity to temp file')
     # ds_tmp.to_netcdf(directory + "temp_velocity_on_tgrid.nc")
@@ -224,12 +252,13 @@ while current_date_init < end_date_init:
     # del ds_tmp
 
     # following definition of EKE by Buzzicotti et al., (2023)
-    u_sq_c = abs(uo_c**2+vo_c**2)
-    # filter ds_tmp['u_sq_c']
-    # ds_tmp = xr.Dataset()  # temporary dataset
-    logger.info('Computing filtered velocity squared using GCM-Filters')
-    u_sq_c_filt = filter_irregular_with_land.apply(u_sq_c, 
-                                                dims=['y_c', 'x_c']).persist()
+    if variable == 'eke':
+        u_sq_c = abs(uo_c**2+vo_c**2)
+        # filter ds_tmp['u_sq_c']
+        # ds_tmp = xr.Dataset()  # temporary dataset
+        logger.info('Computing filtered velocity squared using GCM-Filters')
+        u_sq_c_filt = filter_irregular_with_land.apply(u_sq_c, 
+                                                  dims=['y_c', 'x_c']).persist()
     
     # logger.info('Writing filtered velocity squared to temp file')
     # ds_tmp.to_netcdf(directory + "temp_filtered_velocity_squared.nc")
@@ -244,26 +273,29 @@ while current_date_init < end_date_init:
     #                            chunks={'y_c': 400, 'x_c': 400})
     
     # now compute eddy energy
-    bare_ke = 0.5 * ( uo_c**2 + vo_c**2 )
-    coarse_ke = 0.5 * ( abs( uoce_mean**2 
-                            + voce_mean**2 ) )
-    fine_ke = 0.5 * ( u_sq_c_filt 
+    # bare_ke = 0.5 * ( uo_c**2 + vo_c**2 )
+    if variable == 'mke':
+        coarse_ke = 0.5 * ( abs( uoce_mean**2 
+                        + voce_mean**2 ) )
+    elif variable == 'eke':
+        fine_ke = 0.5 * ( u_sq_c_filt 
                         - abs( uoce_mean**2 + voce_mean**2 ) )
 
-    logger.info('bare_ke is: %s', bare_ke)
-    logger.info('coarse_ke is: %s', coarse_ke)
-    logger.info('fine_ke is: %s', fine_ke)
+    # logger.info('bare_ke is: %s', bare_ke)
+    if variable == 'mke':
+        logger.info('coarse_ke is: %s', coarse_ke)
+    elif variable == 'eke':
+        logger.info('fine_ke is: %s', fine_ke)
 
     # create dataset for xnemo readable
-    ds_eke = xr.Dataset(
-        data_vars={
-            # 'bare_ke': (["t", "y_c", "x_c"], 
-            #             bare_ke.values),
-            'coarse_ke': (["t", "y_c", "x_c"], 
-                        coarse_ke.values),
-            'fine_ke': (["t", "y_c", "x_c"], 
-                        fine_ke.values),
-        },
+    data_vars = {}
+    if variable == 'mke':
+        data_vars['coarse_ke'] = (["t", "y_c", "x_c"], coarse_ke.values)
+    elif variable == 'eke':
+        data_vars['fine_ke'] = (["t", "y_c", "x_c"], fine_ke.values)
+
+    ds_tmp = xr.Dataset(
+        data_vars=data_vars,
         coords={
             "t": (["t"], ds.t.values,
                         ds.t.attrs),
@@ -274,11 +306,11 @@ while current_date_init < end_date_init:
         },
         attrs={
             "name": "NEMO dataset",
-            "description": f"Contains eddy kinetic energy from {mode} component -> ocean T grid variables",
+            "description": f"Contains {variable} from {mode} component -> ocean T grid variables",
         },
     )
 
-    logger.info('ds_eke is: %s', ds_eke)
+    logger.info('ds_tmp is: %s', ds_tmp)
 
 
     # extract time counter bounds from original file
@@ -292,11 +324,14 @@ while current_date_init < end_date_init:
     if mode == 'geostrophic':
         output_file = f'MINT_1d_{date_init}_{date_end}_keg_{region}.nc'
     else:
-        output_file = f'MINT_1d_{date_init}_{date_end}_ke_{region}.nc'
+        output_file = f'MINT_1d_{date_init}_{date_end}_{variable}_{region}.nc'
 
-    save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
+    if variable == 'eke':
+        save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
+    elif variable == 'mke':
+        save_directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/coarsened_data/'
     logger.info('Saving kinetic energy to: %s', save_directory + output_file)
 
-    ds_eke.to_netcdf(save_directory + output_file)
+    ds_tmp.to_netcdf(save_directory + output_file)
 
 logger.info('End!')
