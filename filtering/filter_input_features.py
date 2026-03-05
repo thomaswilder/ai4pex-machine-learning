@@ -27,19 +27,19 @@ logger.info('Begin...')
 
 region = 'SO_JET'
 
-mode = 'geostrophic'
+mode = 'non_geostrophic'
 
-# directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
-# mask16_path = [directory + f'../../features_take2/{region}/mesh_mask_exp16_surface_{region}.nc']
-# mask025_path = directory + f'../../features_take2/{region}/mesh_mask_exp4_{region}.nc'
+directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/production_take2/{region}/'
+mask16_path = [directory + f'../../features_take2/{region}/mesh_mask_exp16_{region}.nc']
+mask025_path = directory + f'../../features_take2/{region}/mesh_mask_exp4_{region}.nc'
 
-directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
-mask16_path = [directory + f'mesh_mask_exp16_{region}.nc']
-mask025_path = directory + f'mesh_mask_exp4_{region}.nc'
+# directory = f'/gws/nopw/j04/ai4pex/twilder/NEMO_data/DINO/EXP16/features_take2/{region}/'
+# mask16_path = [directory + f'mesh_mask_exp16_{region}.nc']
+# mask025_path = directory + f'mesh_mask_exp4_{region}.nc'
 
-variable = 'keg'
-variable_to_filter = 'coarse_ke'
-variable_name = 'coarse_ke'
+variable = 'grid_T'
+variable_to_filter = 'thetao'
+variable_name = 'thetao'
 
 #TODO add xnemo option to load in deformation radius
 
@@ -57,10 +57,10 @@ max_grid_scale = grid_scale.max()
 # -------------------------------------------- #
 
 # Initial date string
-start_date_init_str = "00610101"
+start_date_init_str = "00720701"
 
 # End date string
-end_date_init_str = "00610201"
+end_date_init_str = "00730101"
 
 
 # Convert date strings to datetime objects
@@ -221,6 +221,8 @@ while current_date_init < end_date_init:
     else:
         ds[f'{variable_name}_f'] = filter_irregular_with_land.apply(ds[variable_name],
                                                            dims=['y_c', 'x_c'])
+        
+    logger.info('Dataset is: %s', ds)
 
     # create dataset
     if variable =='grid_U' or variable == 'ug':
@@ -284,10 +286,33 @@ while current_date_init < end_date_init:
                                 -> ocean T grid variables",
             },
         )
+    # # save grid_T in native NEMO format
+    # elif variable == 'grid_T':
+    #     ds_tmp = xr.Dataset(
+    #         data_vars={
+    #             f'{variable_name}': (["time_counter", "deptht", "y", "x"], 
+    #                         ds[f'{variable_name}_f'].values),
+    #         },
+    #         coords={
+    #             "time_counter": (["time_counter"], ds[f'{variable_name}_f'].time_counter.values,
+    #                         ds[f'{variable_name}_f'].time_counter.attrs),
+    #             "deptht": (["deptht"], ds[f'{variable_name}_f'].deptht.values,
+    #                         ds[f'{variable_name}_f'].deptht.attrs),
+    #             "nav_lat": (["y", "x"], ds[f'{variable_name}_f'].gphit.values, 
+    #                     {"standard_name": "Latitude", "units": "degrees_north"}),
+    #             "nav_lon": (["y", "x"], ds[f'{variable_name}_f'].glamt.values, 
+    #                     {"standard_name": "Longitude","units": "degrees_east"}),
+    #         },
+    #         attrs={
+    #             "name": "NEMO dataset",
+    #             "description": f"Filtered {variable_name} at cell centre \
+    #                             -> ocean T grid variables",
+    #         },
+    #     )
     else:
         ds_tmp = xr.Dataset(
             data_vars={
-                f'{variable_name}': (["t", "y_c", "x_c"], 
+                f'{variable_name}': (["t", "z_c", "y_c", "x_c"], 
                             ds[f'{variable_name}_f'].values),
             },
             coords={
